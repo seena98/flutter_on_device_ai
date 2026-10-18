@@ -1,20 +1,14 @@
 PODS:
-  - flutter_on_device_ai (0.1.0):
-    - FlutterMacOS
   - FlutterMacOS (1.0.0)
 
 DEPENDENCIES:
-  - flutter_on_device_ai (from `Flutter/ephemeral/.symlinks/plugins/flutter_on_device_ai/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
 
 EXTERNAL SOURCES:
-  flutter_on_device_ai:
-    :path: Flutter/ephemeral/.symlinks/plugins/flutter_on_device_ai/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
 
 SPEC CHECKSUMS:
-  flutter_on_device_ai: ddf42ee6b2e7f46488e8a0fdd6ea4889a207b13c
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
 
 PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009

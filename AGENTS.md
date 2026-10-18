@@ -17,7 +17,7 @@ lib/src/session/                         OnDeviceAiSession (tool loop, schema re
 lib/src/schema/json_schema.dart          JsonSchema validator + JsonExtractor (lenient JSON recovery)
 lib/src/fallback/                        adapter contract + EdgeAiFallbackAdapter
 lib/src/genui/                           generated-UI spec + generator
-ios/Classes, macos/Classes               identical Swift (FoundationModels); keep the two files in sync
+ios|macos/flutter_device_ai/Sources/flutter_device_ai   identical Swift (SwiftPM + CocoaPods) (FoundationModels); keep the two files in sync
 android/src/main/kotlin/dev/flutter_device_ai   Kotlin (ML Kit GenAI Prompt API)
 example/                                 demo app + integration_test (real device)
 ```
@@ -34,7 +34,7 @@ example/                                 demo app + integration_test (real devic
 2. A native backend reports `supportsToolCalling` / `supportsStructuredOutput` truthfully; Dart emulates what is false.
 3. Platform interface changes must update: method channel, web, stub, `testing.dart`, the native layers, and tests.
 4. Public API changes need a CHANGELOG entry, README update and `llms.txt` update.
-5. Keep `ios/Classes/FlutterDeviceAiPlugin.swift` and `macos/Classes/...` byte-identical.
+5. Keep `ios/flutter_device_ai/Sources/flutter_device_ai/FlutterDeviceAiPlugin.swift` and the macos copy byte-identical.
 6. FoundationModels code must stay inside `#if canImport(FoundationModels)` and `@available(iOS 26.0, macOS 26.0, *)`.
 
 ## Verify before finishing

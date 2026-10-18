@@ -1,5 +1,5 @@
 group = "dev.flutter_device_ai"
-version = "0.1.0"
+version = "0.1.1"
 
 buildscript {
     val kotlinVersion = "2.2.20"

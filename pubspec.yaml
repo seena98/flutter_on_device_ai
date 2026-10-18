@@ -1,9 +1,8 @@
 name: flutter_device_ai
 description: >-
-  Run generative AI on the device with zero bundled models. Uses Apple
-  Foundation Models, Gemini Nano (Android) and Chrome built-in AI, with
-  streaming, tool calling, JSON-schema output and an Edge AI fallback.
-version: 0.1.0
+  On-device generative AI for Flutter: Apple Foundation Models, Gemini Nano and
+  Chrome built-in AI with streaming, tool calling and JSON-schema output.
+version: 0.1.1
 homepage: https://github.com/seena98/flutter_on_device_ai
 repository: https://github.com/seena98/flutter_on_device_ai
 issue_tracker: https://github.com/seena98/flutter_on_device_ai/issues

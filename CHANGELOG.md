@@ -1,3 +1,8 @@
+## 0.1.1
+
+* Swift Package Manager support on iOS and macOS (CocoaPods still works). Sources now live in `ios|macos/flutter_device_ai/Sources/flutter_device_ai`.
+* Shorter pubspec description for pub.dev search.
+
 ## 0.1.0
 
 Package renamed to `flutter_device_ai` (pub.dev rejected `flutter_on_device_ai` as too similar to an existing package). Import `package:flutter_device_ai/flutter_device_ai.dart`; the facade class is `FlutterDeviceAi`.
