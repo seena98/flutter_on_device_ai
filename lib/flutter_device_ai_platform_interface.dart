@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'flutter_on_device_ai_method_channel.dart';
+import 'flutter_device_ai_method_channel.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
 import 'src/models/generation_config.dart';
@@ -15,17 +15,17 @@ import 'src/models/tool.dart';
 /// *sessions*. One-shot generation, tool-call emulation, structured-output
 /// repair and fallback routing are built on top of it in Dart, so they behave
 /// identically everywhere.
-abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
-  FlutterOnDeviceAiPlatform() : super(token: _token);
+abstract class FlutterDeviceAiPlatform extends PlatformInterface {
+  FlutterDeviceAiPlatform() : super(token: _token);
 
   static final Object _token = Object();
 
-  static FlutterOnDeviceAiPlatform _instance = MethodChannelFlutterOnDeviceAi();
+  static FlutterDeviceAiPlatform _instance = MethodChannelFlutterDeviceAi();
 
   /// The active platform-specific implementation.
-  static FlutterOnDeviceAiPlatform get instance => _instance;
+  static FlutterDeviceAiPlatform get instance => _instance;
 
-  static set instance(FlutterOnDeviceAiPlatform instance) {
+  static set instance(FlutterDeviceAiPlatform instance) {
     PlatformInterface.verifyToken(instance, _token);
     _instance = instance;
   }

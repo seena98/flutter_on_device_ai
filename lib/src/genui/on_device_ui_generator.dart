@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../flutter_on_device_ai.dart';
+import '../../flutter_device_ai.dart';
 
 /// Turns a natural-language goal into a validated [GenUiModuleSpec].
 ///
@@ -9,10 +9,9 @@ import '../../flutter_on_device_ai.dart';
 /// final module = await generator.generateModule('5K running plan for a week');
 /// ```
 class OnDeviceUiGenerator {
-  OnDeviceUiGenerator([FlutterOnDeviceAi? ai])
-    : _ai = ai ?? FlutterOnDeviceAi();
+  OnDeviceUiGenerator([FlutterDeviceAi? ai]) : _ai = ai ?? FlutterDeviceAi();
 
-  final FlutterOnDeviceAi _ai;
+  final FlutterDeviceAi _ai;
 
   /// Why the last call returned `null`, if it did.
   String? lastError;

@@ -1,4 +1,4 @@
-/// Base class for every error raised by `flutter_on_device_ai`.
+/// Base class for every error raised by `flutter_device_ai`.
 class OnDeviceAiException implements Exception {
   /// Human readable description of what went wrong.
   final String message;

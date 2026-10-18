@@ -4,14 +4,14 @@
 //
 // Skips (with a printed reason) when the device has no usable model, so it is
 // safe to run anywhere. On a capable device it proves the native path works.
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  final ai = FlutterOnDeviceAi.withFallback();
+  final ai = FlutterDeviceAi.withFallback();
 
   Future<bool> modelReady() async {
     final a = await ai.availability();

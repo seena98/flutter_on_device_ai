@@ -1,4 +1,4 @@
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

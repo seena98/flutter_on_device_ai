@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 520" role="img" aria-labelledby="t d">
   <title id="t">How a request is routed</title>
-  <desc id="d">Your app calls FlutterOnDeviceAi. If the operating system model is ready it answers; otherwise a configured fallback adapter answers; otherwise a typed exception is thrown. Tools and structured output are emulated in Dart when the engine lacks them.</desc>
+  <desc id="d">Your app calls FlutterDeviceAi. If the operating system model is ready it answers; otherwise a configured fallback adapter answers; otherwise a typed exception is thrown. Tools and structured output are emulated in Dart when the engine lacks them.</desc>
   <style>
     :root { --bg:#ffffff; --box:#f1f5f9; --line:#475569; --text:#0f172a; --ok:#0f766e; --okbg:#ccfbf1; --alt:#b45309; --altbg:#fef3c7; --err:#b91c1c; --errbg:#fee2e2; }
     @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --box:#1e293b; --line:#94a3b8; --text:#f1f5f9; --ok:#5eead4; --okbg:#134e4a; --alt:#fcd34d; --altbg:#422006; --err:#fca5a5; --errbg:#450a0a; } }
@@ -24,7 +24,7 @@
   <path class="arrow" d="M280 80H340"/>
 
   <rect class="box" x="340" y="30" width="330" height="100" rx="12"/>
-  <text class="t" x="505" y="62" text-anchor="middle">FlutterOnDeviceAi (Dart)</text>
+  <text class="t" x="505" y="62" text-anchor="middle">FlutterDeviceAi (Dart)</text>
   <text class="s" x="505" y="86" text-anchor="middle">sessions · streaming · cancellation</text>
   <text class="s" x="505" y="108" text-anchor="middle">tool loop · schema validate + repair</text>
 

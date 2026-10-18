@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="doc/assets/hero.png" alt="flutter_on_device_ai: generative AI that ships with the device" width="100%" />
+  <img src="doc/assets/hero.png" alt="flutter_device_ai: generative AI that ships with the device" width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://pub.dev/packages/flutter_on_device_ai"><img src="https://img.shields.io/pub/v/flutter_on_device_ai.svg" alt="pub version"></a>
+  <a href="https://pub.dev/packages/flutter_device_ai"><img src="https://img.shields.io/pub/v/flutter_device_ai.svg" alt="pub version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Web%20%7C%20Windows%20%7C%20Linux-475569.svg" alt="platforms">
 </p>
 
-Your phone already contains a language model. Apple ships one with iOS and macOS 26, Google ships Gemini Nano through AICore on recent Android phones, and Chrome ships one in the browser. `flutter_on_device_ai` lets a Flutter app talk to **whichever one is present**, through a single API, and **hands over to a model you choose** (through `flutter_edge_ai`, for example) when the device has none.
+Your phone already contains a language model. Apple ships one with iOS and macOS 26, Google ships Gemini Nano through AICore on recent Android phones, and Chrome ships one in the browser. `flutter_device_ai` lets a Flutter app talk to **whichever one is present**, through a single API, and **hands over to a model you choose** (through `flutter_edge_ai`, for example) when the device has none.
 
 * Nothing to bundle: **0 MB** added to your app, no API key, no server, works offline.
 * One API for chat sessions, streaming, cancellation, tool calling, JSON-schema output and generated UI.
@@ -18,7 +18,7 @@ Your phone already contains a language model. Apple ships one with iOS and macOS
 * **Test without a device** using the bundled `FakeOnDeviceAiPlatform`.
 
 ```dart
-final ai = FlutterOnDeviceAi();
+final ai = FlutterDeviceAi();
 
 if (await ai.isAvailable()) {
   final reply = await ai.generateText(prompt: 'Name three uses for a paperclip.');
@@ -39,7 +39,7 @@ if (await ai.isAvailable()) {
 ## Install
 
 ```sh
-flutter pub add flutter_on_device_ai
+flutter pub add flutter_device_ai
 ```
 
 Requires Flutter 3.32+ (Dart 3.8+). Platform prerequisites are in [Platform setup](#platform-setup).
@@ -176,7 +176,7 @@ final reply = await session.ask('It is chilly, warm the living room to 22.');
 Give the facade an adapter and everything above (sessions, streaming, tools, schemas) runs on it whenever the OS model is not ready.
 
 ```dart
-final ai = FlutterOnDeviceAi.withFallback(
+final ai = FlutterDeviceAi.withFallback(
   fallbackAdapter: EdgeAiFallbackAdapter(
     modelName: 'Edge AI',
     isModelReady: () async => model != null,
@@ -208,7 +208,7 @@ switch (state.reason) {
   case AvailabilityReason.ready:                 break;
   case AvailabilityReason.featureDisabled:       showHint('Turn on Apple Intelligence in Settings.');
   case AvailabilityReason.systemComponentMissing: await ai.openAICorePlayStore();
-  case AvailabilityReason.modelNotReady:         await FlutterOnDeviceAi.ensureReady(onProgress: showProgress);
+  case AvailabilityReason.modelNotReady:         await FlutterDeviceAi.ensureReady(onProgress: showProgress);
   default:                                       showHint(state.message);
 }
 ```
@@ -270,10 +270,10 @@ Everything extends `OnDeviceAiException` and carries a stable `code`.
 Swap in the in-memory platform. It keeps real session state, streams words as chunks and honours cancellation.
 
 ```dart
-import 'package:flutter_on_device_ai/testing.dart';
+import 'package:flutter_device_ai/testing.dart';
 
 setUp(() {
-  FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+  FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
     responder: (prompt, transcript) => 'Echo: $prompt',
     // availability: ..., info: ... to simulate other devices
   );
@@ -295,15 +295,15 @@ flutter test integration_test -d <device-id>
 | Stream an answer | `ai.generateTextStream`, `session.askStream` |
 | A conversation | `ai.createSession` → `ask`, `addQuery`, `addImage`, `getResponse`, `getResponseAsync`, `countTokens`, `stopGeneration`, `close` |
 | Check readiness | `ai.availability`, `ai.isAvailable`, `ai.capabilities`, `ai.getPlatformInfo` |
-| Prepare the model | `FlutterOnDeviceAi.ensureReady`, `ai.prepare`, `ai.downloadModel`, `ai.openAICorePlayStore` |
+| Prepare the model | `FlutterDeviceAi.ensureReady`, `ai.prepare`, `ai.downloadModel`, `ai.openAICorePlayStore` |
 | Tune generation | `GenerationConfig` (`maxTokens`, `temperature`, `topP`, `topK`, `responseFormat`, `schema`, `maxRepairAttempts`) |
 | Let the model act | `OnDeviceAiTool`, `ToolParameter`, `OnDeviceAiToolException` |
 | Run on other engines | `OnDeviceAiFallbackAdapter`, `EdgeAiFallbackAdapter` |
 | Build screens | `OnDeviceUiGenerator`, `GenUiModuleSpec`, `GenUiBlockTypes` |
 | Parse model output yourself | `JsonSchema.validate`, `JsonExtractor.extract` |
-| Test | `package:flutter_on_device_ai/testing.dart` |
+| Test | `package:flutter_device_ai/testing.dart` |
 
-Full API docs are on [pub.dev](https://pub.dev/documentation/flutter_on_device_ai/latest/).
+Full API docs are on [pub.dev](https://pub.dev/documentation/flutter_device_ai/latest/).
 
 ## Known limits
 

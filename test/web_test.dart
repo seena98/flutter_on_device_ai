@@ -3,8 +3,8 @@ library;
 
 import 'dart:js_interop';
 
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_web.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_web.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 @JS('eval')
@@ -43,7 +43,7 @@ void installFakeLanguageModel(String availability) {
 void main() {
   test('reports browserUnsupported without the Prompt API', () async {
     _eval('delete window.LanguageModel');
-    final web = FlutterOnDeviceAiWeb();
+    final web = FlutterDeviceAiWeb();
     final a = await web.getAvailability();
     expect(a.reason, AvailabilityReason.browserUnsupported);
     expect(
@@ -53,7 +53,7 @@ void main() {
   });
 
   test('maps Prompt API availability states', () async {
-    final web = FlutterOnDeviceAiWeb();
+    final web = FlutterDeviceAiWeb();
     for (final (raw, status) in [
       ('available', ModelFeatureStatus.available),
       ('downloadable', ModelFeatureStatus.downloadable),
@@ -67,7 +67,7 @@ void main() {
 
   test('prompt, stream and token count go through the JS API', () async {
     installFakeLanguageModel('available');
-    final web = FlutterOnDeviceAiWeb();
+    final web = FlutterDeviceAiWeb();
     final id = await web.createSession(systemInstruction: 'sys');
     await web.sessionAddQuery(id, 'hi');
     final res = await web.sessionGetResponse(id);
@@ -81,7 +81,7 @@ void main() {
 
   test('system instruction and sampling reach create()', () async {
     installFakeLanguageModel('available');
-    final web = FlutterOnDeviceAiWeb();
+    final web = FlutterDeviceAiWeb();
     final id = await web.createSession(
       systemInstruction: 'be brief',
       config: const GenerationConfig(temperature: 0.3),
@@ -107,7 +107,7 @@ void main() {
       installFakeLanguageModel('downloadable');
       setUserActivation(false);
       await expectLater(
-        FlutterOnDeviceAiWeb().downloadModel().toList(),
+        FlutterDeviceAiWeb().downloadModel().toList(),
         throwsA(isA<OnDeviceAiUserActivationRequiredException>()),
       );
     },
@@ -116,14 +116,14 @@ void main() {
   test('download reports progress from the monitor', () async {
     installFakeLanguageModel('downloadable');
     setUserActivation(true);
-    final events = await FlutterOnDeviceAiWeb().downloadModel().toList();
+    final events = await FlutterDeviceAiWeb().downloadModel().toList();
     expect(events.map((e) => e.progress), containsAll([0.5, 1.0]));
     expect(events.last.status, ModelFeatureStatus.available);
   });
 
   test('empty turns are rejected', () async {
     installFakeLanguageModel('available');
-    final web = FlutterOnDeviceAiWeb();
+    final web = FlutterDeviceAiWeb();
     final id = await web.createSession();
     await expectLater(
       web.sessionGetResponse(id),

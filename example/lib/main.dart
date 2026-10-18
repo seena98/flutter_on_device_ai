@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -43,7 +43,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final _ai = FlutterOnDeviceAi.withFallback();
+  final _ai = FlutterDeviceAi.withFallback();
 
   OnDeviceAiAvailability? _availability;
   OnDeviceAiCapabilities? _caps;
@@ -205,7 +205,7 @@ class _StatusBar extends StatelessWidget {
                   ),
                 if (a?.reason == AvailabilityReason.systemComponentMissing)
                   FilledButton.tonal(
-                    onPressed: () => FlutterOnDeviceAi().openAICorePlayStore(),
+                    onPressed: () => FlutterDeviceAi().openAICorePlayStore(),
                     child: const Text('Open AICore in Play Store'),
                   ),
                 if (a != null && !a.isReady) ...[
@@ -223,7 +223,7 @@ class _StatusBar extends StatelessWidget {
 
 class ChatTab extends StatefulWidget {
   const ChatTab({super.key, required this.ai});
-  final FlutterOnDeviceAi ai;
+  final FlutterDeviceAi ai;
 
   @override
   State<ChatTab> createState() => _ChatTabState();
@@ -352,7 +352,7 @@ class _Bubble extends StatelessWidget {
 
 class ExtractTab extends StatefulWidget {
   const ExtractTab({super.key, required this.ai});
-  final FlutterOnDeviceAi ai;
+  final FlutterDeviceAi ai;
 
   @override
   State<ExtractTab> createState() => _ExtractTabState();
@@ -426,7 +426,7 @@ class _ExtractTabState extends State<ExtractTab> {
 
 class ToolsTab extends StatefulWidget {
   const ToolsTab({super.key, required this.ai});
-  final FlutterOnDeviceAi ai;
+  final FlutterDeviceAi ai;
 
   @override
   State<ToolsTab> createState() => _ToolsTabState();
@@ -506,7 +506,7 @@ class _ToolsTabState extends State<ToolsTab> {
 
 class ScreenTab extends StatefulWidget {
   const ScreenTab({super.key, required this.ai});
-  final FlutterOnDeviceAi ai;
+  final FlutterDeviceAi ai;
 
   @override
   State<ScreenTab> createState() => _ScreenTabState();

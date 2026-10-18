@@ -1,7 +1,7 @@
-/// Test doubles for apps that use `flutter_on_device_ai`.
+/// Test doubles for apps that use `flutter_device_ai`.
 ///
 /// ```dart
-/// FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+/// FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
 ///   responder: (prompt, history) => 'Echo: $prompt',
 /// );
 /// ```
@@ -10,7 +10,7 @@ library;
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'flutter_on_device_ai_platform_interface.dart';
+import 'flutter_device_ai_platform_interface.dart';
 import 'src/exceptions.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
@@ -28,7 +28,7 @@ typedef FakeResponder =
 ///
 /// It keeps real session state, streams words as chunks and honours
 /// cancellation, so code written against the plugin behaves as on a device.
-class FakeOnDeviceAiPlatform extends FlutterOnDeviceAiPlatform {
+class FakeOnDeviceAiPlatform extends FlutterDeviceAiPlatform {
   FakeOnDeviceAiPlatform({
     this.responder,
     this.availability = const OnDeviceAiAvailability(

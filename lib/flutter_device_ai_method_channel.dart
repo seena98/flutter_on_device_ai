@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'flutter_on_device_ai_platform_interface.dart';
+import 'flutter_device_ai_platform_interface.dart';
 import 'src/exceptions.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
@@ -11,26 +11,24 @@ import 'src/models/generation_config.dart';
 import 'src/models/model_status.dart';
 import 'src/models/tool.dart';
 
-/// [FlutterOnDeviceAiPlatform] backed by platform channels (Android, iOS,
+/// [FlutterDeviceAiPlatform] backed by platform channels (Android, iOS,
 /// macOS, Windows, Linux).
 ///
 /// Wire protocol
-/// * method channel `flutter_on_device_ai` — request / response calls and the
+/// * method channel `flutter_device_ai` — request / response calls and the
 ///   `onToolCall` callback from native to Dart,
-/// * event channel `flutter_on_device_ai/events` — one multiplexed stream of
+/// * event channel `flutter_device_ai/events` — one multiplexed stream of
 ///   `{sessionId, type: chunk|done|error, ...}` events for streaming turns,
-/// * event channel `flutter_on_device_ai/download` — model download progress.
-class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
+/// * event channel `flutter_device_ai/download` — model download progress.
+class MethodChannelFlutterDeviceAi extends FlutterDeviceAiPlatform {
   @visibleForTesting
-  final methodChannel = const MethodChannel('flutter_on_device_ai');
+  final methodChannel = const MethodChannel('flutter_device_ai');
 
   @visibleForTesting
-  final eventChannel = const EventChannel('flutter_on_device_ai/events');
+  final eventChannel = const EventChannel('flutter_device_ai/events');
 
   @visibleForTesting
-  final downloadEventChannel = const EventChannel(
-    'flutter_on_device_ai/download',
-  );
+  final downloadEventChannel = const EventChannel('flutter_device_ai/download');
 
   final Map<String, Map<String, OnDeviceAiTool>> _toolsBySession = {};
   final Map<String, StreamController<String>> _streams = {};

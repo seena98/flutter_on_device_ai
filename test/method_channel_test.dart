@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_method_channel.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_method_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late MethodChannelFlutterOnDeviceAi platform;
+  late MethodChannelFlutterDeviceAi platform;
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   final calls = <MethodCall>[];
@@ -22,7 +22,7 @@ void main() {
 
   setUp(() {
     calls.clear();
-    platform = MethodChannelFlutterOnDeviceAi();
+    platform = MethodChannelFlutterDeviceAi();
   });
 
   tearDown(() {

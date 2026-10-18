@@ -3,29 +3,29 @@
 Guide for AI coding agents (and humans) changing this repository. Usage docs for *consumers* of the package are in `llms.txt` and `README.md`.
 
 ## What this is
-`flutter_on_device_ai` is a Flutter plugin. Native code only does what the OS can do; everything else lives in Dart so it behaves the same on every platform.
+`flutter_device_ai` is a Flutter plugin. Native code only does what the OS can do; everything else lives in Dart so it behaves the same on every platform.
 
 ## Layout
 ```
-lib/flutter_on_device_ai.dart            public facade + exports (FlutterOnDeviceAi)
-lib/flutter_on_device_ai_platform_interface.dart   small platform contract (availability, download, sessions)
-lib/flutter_on_device_ai_method_channel.dart       Android/iOS/macOS transport; event multiplexing; tool callbacks
-lib/flutter_on_device_ai_web.dart        Chrome Prompt API via dart:js_interop
-lib/flutter_on_device_ai_stub.dart       Windows/Linux: reports unavailable (dartPluginClass)
+lib/flutter_device_ai.dart            public facade + exports (FlutterDeviceAi)
+lib/flutter_device_ai_platform_interface.dart   small platform contract (availability, download, sessions)
+lib/flutter_device_ai_method_channel.dart       Android/iOS/macOS transport; event multiplexing; tool callbacks
+lib/flutter_device_ai_web.dart        Chrome Prompt API via dart:js_interop
+lib/flutter_device_ai_stub.dart       Windows/Linux: reports unavailable (dartPluginClass)
 lib/testing.dart                         FakeOnDeviceAiPlatform for consumers' tests
 lib/src/session/                         OnDeviceAiSession (tool loop, schema repair), SessionBackend, tool_emulation
 lib/src/schema/json_schema.dart          JsonSchema validator + JsonExtractor (lenient JSON recovery)
 lib/src/fallback/                        adapter contract + EdgeAiFallbackAdapter
 lib/src/genui/                           generated-UI spec + generator
 ios/Classes, macos/Classes               identical Swift (FoundationModels); keep the two files in sync
-android/src/main/kotlin/dev/flutter_on_device_ai   Kotlin (ML Kit GenAI Prompt API)
+android/src/main/kotlin/dev/flutter_device_ai   Kotlin (ML Kit GenAI Prompt API)
 example/                                 demo app + integration_test (real device)
 ```
 
 ## Wire protocol (native <-> Dart)
-* MethodChannel `flutter_on_device_ai`: `getAvailability`, `getPlatformInfo`, `openAICorePlayStore`, `createSession{sessionId,systemInstruction,tools,config}`, `sessionAddQuery`, `sessionAddImage`, `sessionGetResponse`, `sessionStartStream`, `sessionCountTokens`, `sessionStopGeneration`, `sessionClose`. Native -> Dart: `onToolCall{sessionId,name,arguments}` returning `{result}` or `{error}`.
-* EventChannel `flutter_on_device_ai/events`: one stream, events `{sessionId, type: chunk|done|error, text|code|message}`; Dart demultiplexes by `sessionId`.
-* EventChannel `flutter_on_device_ai/download`: `{status, progress, bytesDownloaded, totalBytes, errorMessage}`, ends when finished.
+* MethodChannel `flutter_device_ai`: `getAvailability`, `getPlatformInfo`, `openAICorePlayStore`, `createSession{sessionId,systemInstruction,tools,config}`, `sessionAddQuery`, `sessionAddImage`, `sessionGetResponse`, `sessionStartStream`, `sessionCountTokens`, `sessionStopGeneration`, `sessionClose`. Native -> Dart: `onToolCall{sessionId,name,arguments}` returning `{result}` or `{error}`.
+* EventChannel `flutter_device_ai/events`: one stream, events `{sessionId, type: chunk|done|error, text|code|message}`; Dart demultiplexes by `sessionId`.
+* EventChannel `flutter_device_ai/download`: `{status, progress, bytesDownloaded, totalBytes, errorMessage}`, ends when finished.
 * Error codes: UNAVAILABLE, UNSUPPORTED, CANCELLED, SESSION_BUSY, SESSION_NOT_FOUND, EMPTY_TURN, GENERATION_FAILED. Dart maps them in `mapPlatformException`.
 * Session ids are generated in Dart.
 
@@ -34,7 +34,7 @@ example/                                 demo app + integration_test (real devic
 2. A native backend reports `supportsToolCalling` / `supportsStructuredOutput` truthfully; Dart emulates what is false.
 3. Platform interface changes must update: method channel, web, stub, `testing.dart`, the native layers, and tests.
 4. Public API changes need a CHANGELOG entry, README update and `llms.txt` update.
-5. Keep `ios/Classes/FlutterOnDeviceAiPlugin.swift` and `macos/Classes/...` byte-identical.
+5. Keep `ios/Classes/FlutterDeviceAiPlugin.swift` and `macos/Classes/...` byte-identical.
 6. FoundationModels code must stay inside `#if canImport(FoundationModels)` and `@available(iOS 26.0, macOS 26.0, *)`.
 
 ## Verify before finishing

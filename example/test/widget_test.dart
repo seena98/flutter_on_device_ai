@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_platform_interface.dart';
-import 'package:flutter_on_device_ai/testing.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_platform_interface.dart';
+import 'package:flutter_device_ai/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_on_device_ai_example/main.dart';
+import 'package:flutter_device_ai_example/main.dart';
 
 void main() {
   testWidgets('chats with the (fake) on-device model', (tester) async {
-    FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+    FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
       responder: (prompt, history) => 'Echo: $prompt',
     );
 
@@ -25,7 +25,7 @@ void main() {
   });
 
   testWidgets('explains why nothing is usable', (tester) async {
-    FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+    FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
       availability: const OnDeviceAiAvailability(
         status: ModelFeatureStatus.unavailable,
         reason: AvailabilityReason.deviceNotEligible,

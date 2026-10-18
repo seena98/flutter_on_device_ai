@@ -5,7 +5,7 @@ import 'dart:js_interop_unsafe';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
-import 'flutter_on_device_ai_platform_interface.dart';
+import 'flutter_device_ai_platform_interface.dart';
 import 'src/exceptions.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
@@ -23,11 +23,11 @@ extension type _AbortController._(JSObject _) implements JSObject {
 
 /// Web implementation backed by the Prompt API (`LanguageModel`) that Chromium
 /// browsers ship with Gemini Nano.
-class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
-  FlutterOnDeviceAiWeb();
+class FlutterDeviceAiWeb extends FlutterDeviceAiPlatform {
+  FlutterDeviceAiWeb();
 
   static void registerWith(Registrar registrar) {
-    FlutterOnDeviceAiPlatform.instance = FlutterOnDeviceAiWeb();
+    FlutterDeviceAiPlatform.instance = FlutterDeviceAiWeb();
   }
 
   final Map<String, _WebSession> _sessions = {};
@@ -335,7 +335,7 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
     if (existing != null) {
       if (call?.maxTokens != null && kDebugMode && call!.maxTokens != 256) {
         debugPrint(
-          'flutter_on_device_ai: the Prompt API has no max-token limit; '
+          'flutter_device_ai: the Prompt API has no max-token limit; '
           'maxTokens is ignored on the web.',
         );
       }

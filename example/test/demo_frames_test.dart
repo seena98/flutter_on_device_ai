@@ -10,10 +10,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_platform_interface.dart';
-import 'package:flutter_on_device_ai/testing.dart';
-import 'package:flutter_on_device_ai_example/main.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_platform_interface.dart';
+import 'package:flutter_device_ai/testing.dart';
+import 'package:flutter_device_ai_example/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _walk =
@@ -72,7 +72,7 @@ void main() {
       ..devicePixelRatio = 2;
     addTearDown(tester.view.reset);
 
-    FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+    FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
       availability: const OnDeviceAiAvailability(
         status: ModelFeatureStatus.available,
         reason: AvailabilityReason.ready,

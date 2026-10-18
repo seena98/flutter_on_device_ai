@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_platform_interface.dart';
-import 'package:flutter_on_device_ai/testing.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_platform_interface.dart';
+import 'package:flutter_device_ai/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 FakeOnDeviceAiPlatform install({
@@ -25,7 +25,7 @@ FakeOnDeviceAiPlatform install({
           message: 'ready',
         ),
   );
-  FlutterOnDeviceAiPlatform.instance = fake;
+  FlutterDeviceAiPlatform.instance = fake;
   return fake;
 }
 
@@ -36,8 +36,8 @@ const unavailable = OnDeviceAiAvailability(
 );
 
 void main() {
-  late FlutterOnDeviceAi ai;
-  setUp(() => ai = FlutterOnDeviceAi.withFallback());
+  late FlutterDeviceAi ai;
+  setUp(() => ai = FlutterDeviceAi.withFallback());
 
   group('one-shot', () {
     test('generateText answers and cleans up its session', () async {

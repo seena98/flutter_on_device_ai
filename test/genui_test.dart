@@ -1,6 +1,6 @@
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
-import 'package:flutter_on_device_ai/flutter_on_device_ai_platform_interface.dart';
-import 'package:flutter_on_device_ai/testing.dart';
+import 'package:flutter_device_ai/flutter_device_ai.dart';
+import 'package:flutter_device_ai/flutter_device_ai_platform_interface.dart';
+import 'package:flutter_device_ai/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -73,11 +73,11 @@ Here is the screen:
 
   group('generateModule', () {
     test('talks to the model and reports failures', () async {
-      FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+      FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
         responder: (p, h) =>
             '{"title":"Plan","blocks":[{"type":"note","content":"hi"}]}',
       );
-      final generator = OnDeviceUiGenerator(FlutterOnDeviceAi.withFallback());
+      final generator = OnDeviceUiGenerator(FlutterDeviceAi.withFallback());
       final streamed = <String>[];
       final spec = await generator.generateModule(
         'anything',
@@ -87,7 +87,7 @@ Here is the screen:
       expect(spec!.title, 'Plan');
       expect(streamed, isNotEmpty);
 
-      FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+      FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
         responder: (p, h) => 'no json',
       );
       expect(await generator.generateModule('anything'), isNull);
@@ -95,14 +95,14 @@ Here is the screen:
     });
 
     test('returns null with a reason when AI is unavailable', () async {
-      FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+      FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
         availability: const OnDeviceAiAvailability(
           status: ModelFeatureStatus.unavailable,
           reason: AvailabilityReason.featureDisabled,
           message: 'Turn it on',
         ),
       );
-      final generator = OnDeviceUiGenerator(FlutterOnDeviceAi.withFallback());
+      final generator = OnDeviceUiGenerator(FlutterDeviceAi.withFallback());
       expect(await generator.generateModule('x'), isNull);
       expect(generator.lastError, 'Turn it on');
     });

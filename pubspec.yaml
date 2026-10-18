@@ -1,4 +1,4 @@
-name: flutter_on_device_ai
+name: flutter_device_ai
 description: >-
   Run generative AI on the device with zero bundled models. Uses Apple
   Foundation Models, Gemini Nano (Android) and Chrome built-in AI, with
@@ -34,16 +34,16 @@ flutter:
   plugin:
     platforms:
       android:
-        package: dev.flutter_on_device_ai
-        pluginClass: FlutterOnDeviceAiPlugin
+        package: dev.flutter_device_ai
+        pluginClass: FlutterDeviceAiPlugin
       ios:
-        pluginClass: FlutterOnDeviceAiPlugin
+        pluginClass: FlutterDeviceAiPlugin
       macos:
-        pluginClass: FlutterOnDeviceAiPlugin
+        pluginClass: FlutterDeviceAiPlugin
       linux:
-        dartPluginClass: FlutterOnDeviceAiDesktopStub
+        dartPluginClass: FlutterDeviceAiDesktopStub
       windows:
-        dartPluginClass: FlutterOnDeviceAiDesktopStub
+        dartPluginClass: FlutterDeviceAiDesktopStub
       web:
-        pluginClass: FlutterOnDeviceAiWeb
-        fileName: flutter_on_device_ai_web.dart
+        pluginClass: FlutterDeviceAiWeb
+        fileName: flutter_device_ai_web.dart

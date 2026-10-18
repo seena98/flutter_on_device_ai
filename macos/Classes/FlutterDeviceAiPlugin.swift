@@ -15,7 +15,7 @@ import FoundationModels
 /// Everything that touches `FoundationModels` lives in `AppleEngine`, which is
 /// compiled only when the SDK provides the framework and is created only on an
 /// OS that ships it. On older systems the plugin reports `unavailable`.
-public class FlutterOnDeviceAiPlugin: NSObject, FlutterPlugin {
+public class FlutterDeviceAiPlugin: NSObject, FlutterPlugin {
   private let channel: FlutterMethodChannel
   private let events = EventRelay()
   private let downloads = DownloadRelay()
@@ -32,12 +32,12 @@ public class FlutterOnDeviceAiPlugin: NSObject, FlutterPlugin {
     #else
     let messenger = registrar.messenger
     #endif
-    let channel = FlutterMethodChannel(name: "flutter_on_device_ai", binaryMessenger: messenger)
-    let instance = FlutterOnDeviceAiPlugin(channel: channel)
+    let channel = FlutterMethodChannel(name: "flutter_device_ai", binaryMessenger: messenger)
+    let instance = FlutterDeviceAiPlugin(channel: channel)
     registrar.addMethodCallDelegate(instance, channel: channel)
-    FlutterEventChannel(name: "flutter_on_device_ai/events", binaryMessenger: messenger)
+    FlutterEventChannel(name: "flutter_device_ai/events", binaryMessenger: messenger)
       .setStreamHandler(instance.events)
-    FlutterEventChannel(name: "flutter_on_device_ai/download", binaryMessenger: messenger)
+    FlutterEventChannel(name: "flutter_device_ai/download", binaryMessenger: messenger)
       .setStreamHandler(instance.downloads)
     instance.downloads.availabilityProvider = { [weak instance] in instance?.availability() ?? [:] }
   }

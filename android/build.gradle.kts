@@ -1,4 +1,4 @@
-group = "dev.flutter_on_device_ai"
+group = "dev.flutter_device_ai"
 version = "0.1.0"
 
 buildscript {
@@ -27,7 +27,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.flutter_on_device_ai"
+    namespace = "dev.flutter_device_ai"
 
     compileSdk = 36
 

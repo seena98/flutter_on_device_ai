@@ -1,4 +1,4 @@
-package dev.flutter_on_device_ai
+package dev.flutter_device_ai
 
 import android.content.Context
 import android.content.Intent
@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
  * Prompt API. The Prompt API is stateless, so conversations are kept here and
  * replayed on every turn.
  */
-class FlutterOnDeviceAiPlugin : FlutterPlugin, MethodCallHandler {
+class FlutterDeviceAiPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var eventChannel: EventChannel
     private lateinit var downloadChannel: EventChannel
@@ -64,10 +64,10 @@ class FlutterOnDeviceAiPlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
-        channel = MethodChannel(binding.binaryMessenger, "flutter_on_device_ai")
+        channel = MethodChannel(binding.binaryMessenger, "flutter_device_ai")
         channel.setMethodCallHandler(this)
 
-        eventChannel = EventChannel(binding.binaryMessenger, "flutter_on_device_ai/events")
+        eventChannel = EventChannel(binding.binaryMessenger, "flutter_device_ai/events")
         eventChannel.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 eventSink = events
@@ -78,7 +78,7 @@ class FlutterOnDeviceAiPlugin : FlutterPlugin, MethodCallHandler {
             }
         })
 
-        downloadChannel = EventChannel(binding.binaryMessenger, "flutter_on_device_ai/download")
+        downloadChannel = EventChannel(binding.binaryMessenger, "flutter_device_ai/download")
         downloadChannel.setStreamHandler(object : EventChannel.StreamHandler {
             private var job: Job? = null
 

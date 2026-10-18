@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'flutter_on_device_ai_platform_interface.dart';
+import 'flutter_device_ai_platform_interface.dart';
 import 'src/exceptions.dart';
 import 'src/fallback/fallback_adapter.dart';
 import 'src/models/ai_response.dart';
@@ -12,7 +12,7 @@ import 'src/session/on_device_ai_session.dart';
 import 'src/session/session_backend.dart';
 import 'src/session/tool_emulation.dart';
 
-export 'flutter_on_device_ai_stub.dart' show FlutterOnDeviceAiDesktopStub;
+export 'flutter_device_ai_stub.dart' show FlutterDeviceAiDesktopStub;
 export 'src/exceptions.dart';
 export 'src/fallback/fallback_adapter.dart';
 export 'src/fallback/edge_ai_fallback_adapter.dart';
@@ -33,22 +33,22 @@ export 'src/session/on_device_ai_session.dart';
 /// none is usable, transparently routes to a [fallbackAdapter].
 ///
 /// ```dart
-/// final ai = FlutterOnDeviceAi();
+/// final ai = FlutterDeviceAi();
 /// if (await ai.isAvailable()) {
 ///   final answer = await ai.generateText(prompt: 'Hello!');
 ///   print(answer.text);
 /// }
 /// ```
-class FlutterOnDeviceAi {
-  static final FlutterOnDeviceAi _singleton = FlutterOnDeviceAi._internal();
+class FlutterDeviceAi {
+  static final FlutterDeviceAi _singleton = FlutterDeviceAi._internal();
 
   /// The shared default instance.
-  factory FlutterOnDeviceAi() => _singleton;
+  factory FlutterDeviceAi() => _singleton;
 
-  FlutterOnDeviceAi._internal();
+  FlutterDeviceAi._internal();
 
   /// Creates an independent instance, optionally with a [fallbackAdapter].
-  FlutterOnDeviceAi.withFallback({this.fallbackAdapter});
+  FlutterDeviceAi.withFallback({this.fallbackAdapter});
 
   /// Engine used whenever the native model is not ready.
   OnDeviceAiFallbackAdapter? fallbackAdapter;
@@ -56,7 +56,7 @@ class FlutterOnDeviceAi {
   String? _defaultInstructions;
   List<OnDeviceAiTool> _tools = const [];
 
-  FlutterOnDeviceAiPlatform get _platform => FlutterOnDeviceAiPlatform.instance;
+  FlutterDeviceAiPlatform get _platform => FlutterDeviceAiPlatform.instance;
 
   // --- Availability ---------------------------------------------------------
 
@@ -142,7 +142,7 @@ class FlutterOnDeviceAi {
   /// [OnDeviceAiUnavailableException] when the device cannot run the model.
   static Future<void> ensureReady({
     void Function(double progress)? onProgress,
-  }) => FlutterOnDeviceAi().prepare(onProgress: onProgress);
+  }) => FlutterDeviceAi().prepare(onProgress: onProgress);
 
   /// Instance form of [ensureReady].
   Future<void> prepare({void Function(double progress)? onProgress}) async {
@@ -310,3 +310,7 @@ class FlutterOnDeviceAi {
         : '$instruction\n\n$block';
   }
 }
+
+/// Former name of [FlutterDeviceAi].
+@Deprecated('Use FlutterDeviceAi')
+typedef FlutterOnDeviceAi = FlutterDeviceAi;

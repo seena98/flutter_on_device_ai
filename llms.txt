@@ -1,16 +1,16 @@
-# flutter_on_device_ai
+# flutter_device_ai
 
 > Flutter plugin for on-device generative AI. Uses the OS-managed model (Apple Foundation Models on iOS/macOS 26+, Gemini Nano via Google AICore on Android, Chrome's built-in Prompt API on web) with an optional fallback adapter (e.g. flutter_edge_ai). No model is bundled, no network, no API key.
 
-Import: `import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';`
-Test double: `import 'package:flutter_on_device_ai/testing.dart';`
+Import: `import 'package:flutter_device_ai/flutter_device_ai.dart';`
+Test double: `import 'package:flutter_device_ai/testing.dart';`
 
 ## Core calls
 
 ```dart
-final ai = FlutterOnDeviceAi();                       // singleton; FlutterOnDeviceAi.withFallback(fallbackAdapter: ...) for a custom one
+final ai = FlutterDeviceAi();                       // singleton; FlutterDeviceAi.withFallback(fallbackAdapter: ...) for a custom one
 final a = await ai.availability();                    // OnDeviceAiAvailability: status, reason (enum), message
-await FlutterOnDeviceAi.ensureReady(onProgress: (p) {}); // download model; on web only from a user gesture
+await FlutterDeviceAi.ensureReady(onProgress: (p) {}); // download model; on web only from a user gesture
 final r = await ai.generateText(prompt: '...');       // AiResponse: text, json, tokenCount, generationTimeMs
 await for (final d in ai.generateTextStream(prompt: '...')) {}  // text deltas
 final s = await ai.createSession(systemInstruction: '...', tools: [...]);
@@ -31,7 +31,7 @@ Supported keywords: type, enum, properties, required, additionalProperties:false
 `await ai.capabilities()` -> backend, streaming, toolCalling/structuredOutput (`CapabilitySupport.native|emulated|unsupported`), imageInput, exactTokenCounts, modelDownload. Branch on this, never on the platform name.
 
 ## Fallback
-`FlutterOnDeviceAi.withFallback(fallbackAdapter: EdgeAiFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))`. Adapters are stateless; the package replays the transcript ("User: ...\nAssistant: ...\nAssistant:") on each turn. Used whenever the OS model is not `available`. Windows and Linux always use it.
+`FlutterDeviceAi.withFallback(fallbackAdapter: EdgeAiFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))`. Adapters are stateless; the package replays the transcript ("User: ...\nAssistant: ...\nAssistant:") on each turn. Used whenever the OS model is not `available`. Windows and Linux always use it.
 
 ## Errors (all extend OnDeviceAiException, field `code`)
 Unavailable, Unsupported, UserActivationRequired (web), SessionBusy, Cancelled, StructuredOutput, Schema, Generation.

@@ -12,7 +12,7 @@ import 'tool_emulation.dart';
 
 /// A multi-turn conversation with an on-device model.
 ///
-/// Create one with `FlutterOnDeviceAi.createSession`. Sessions are isolated:
+/// Create one with `FlutterDeviceAi.createSession`. Sessions are isolated:
 /// you can keep several open at once. A session answers one turn at a time;
 /// touching it while it generates throws [OnDeviceAiSessionBusyException].
 ///
@@ -22,7 +22,7 @@ import 'tool_emulation.dart';
 /// await session.close();
 /// ```
 class OnDeviceAiSession {
-  /// Wraps a [SessionBackend]. Use `FlutterOnDeviceAi.createSession` instead.
+  /// Wraps a [SessionBackend]. Use `FlutterDeviceAi.createSession` instead.
   OnDeviceAiSession.fromBackend({
     required this.sessionId,
     required SessionBackend backend,

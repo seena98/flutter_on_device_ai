@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import '../../flutter_on_device_ai_platform_interface.dart';
+import '../../flutter_device_ai_platform_interface.dart';
 import '../exceptions.dart';
 import '../fallback/fallback_adapter.dart';
 import '../models/ai_response.dart';
@@ -37,7 +37,7 @@ abstract class SessionBackend {
 class PlatformSessionBackend implements SessionBackend {
   PlatformSessionBackend({
     required this.sessionId,
-    required FlutterOnDeviceAiPlatform platform,
+    required FlutterDeviceAiPlatform platform,
     required this.nativeTools,
     required this.nativeStructuredOutput,
     required this.supportsImages,
@@ -45,7 +45,7 @@ class PlatformSessionBackend implements SessionBackend {
   }) : _platform = platform;
 
   final String sessionId;
-  final FlutterOnDeviceAiPlatform _platform;
+  final FlutterDeviceAiPlatform _platform;
 
   @override
   final bool nativeTools;

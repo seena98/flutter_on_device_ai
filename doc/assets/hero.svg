@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="t d">
-  <title id="t">flutter_on_device_ai</title>
+  <title id="t">flutter_device_ai</title>
   <desc id="d">On-device generative AI for Flutter that uses the model the operating system already ships.</desc>
   <style>
     .bg { fill: #0f172a; }
@@ -11,7 +11,7 @@
     .chipft { font: 600 18px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #cbd5e1; }
   </style>
   <rect class="bg" width="1200" height="360" rx="24"/>
-  <text class="title" x="64" y="132">flutter_on_device_ai</text>
+  <text class="title" x="64" y="132">flutter_device_ai</text>
   <text class="sub" x="64" y="182">Generative AI that ships with the device. No model in your app.</text>
 
   <rect class="chip" x="64" y="236" width="260" height="52" rx="26"/>

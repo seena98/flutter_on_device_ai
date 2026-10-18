@@ -1,11 +1,11 @@
 {
-    "name": "flutter_on_device_ai_example",
-    "short_name": "flutter_on_device_ai_example",
+    "name": "flutter_device_ai_example",
+    "short_name": "flutter_device_ai_example",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Demonstrates how to use the flutter_on_device_ai plugin.",
+    "description": "Demonstrates how to use the flutter_device_ai plugin.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

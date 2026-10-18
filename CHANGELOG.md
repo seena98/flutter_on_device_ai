@@ -1,5 +1,7 @@
 ## 0.1.0
 
+Package renamed to `flutter_device_ai` (pub.dev rejected `flutter_on_device_ai` as too similar to an existing package). Import `package:flutter_device_ai/flutter_device_ai.dart`; the facade class is `FlutterDeviceAi`.
+
 First public release.
 
 ### Engines
@@ -10,7 +12,7 @@ First public release.
 * Windows and Linux report `unavailable` and route to the fallback adapter.
 
 ### API
-* `FlutterOnDeviceAi`: `generateText`, `generateTextStream`, `generateTextSimple`, `createSession`, `availability`, `isAvailable`, `capabilities`, `getPlatformInfo`, `prepare` / `ensureReady`, `downloadModel`, `openAICorePlayStore`, `initialize`, `registerTools`.
+* `FlutterDeviceAi`: `generateText`, `generateTextStream`, `generateTextSimple`, `createSession`, `availability`, `isAvailable`, `capabilities`, `getPlatformInfo`, `prepare` / `ensureReady`, `downloadModel`, `openAICorePlayStore`, `initialize`, `registerTools`.
 * `OnDeviceAiSession`: concurrent isolated sessions, multi-part turns, `ask` / `askStream`, `countTokens`, real `stopGeneration`, busy detection.
 * **Emulated tool calling** for backends without native tools, with argument validation and a bounded round-trip loop (also while streaming).
 * **Structured output** with a built-in JSON Schema validator, lenient JSON extraction (fences, prose, truncation) and automatic validate-and-repair.
