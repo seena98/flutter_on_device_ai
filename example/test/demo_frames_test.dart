@@ -172,7 +172,8 @@ void main() {
     await run(find.text('Generate screen'), maxFrames: 6, every: 3);
     await snap(2600);
 
-    if (dir != null)
+    if (dir != null) {
       File('$dir/manifest.txt').writeAsStringSync(manifest.join('\n'));
+    }
   }, skip: dir == null);
 }
