@@ -9,8 +9,12 @@ import 'src/models/generation_config.dart';
 import 'src/models/model_status.dart';
 import 'src/models/tool.dart';
 
-/// The platform interface that all platform-specific implementations of
-/// `flutter_on_device_ai` must implement.
+/// The contract every platform implementation fulfils.
+///
+/// The surface is deliberately small: availability, model download and
+/// *sessions*. One-shot generation, tool-call emulation, structured-output
+/// repair and fallback routing are built on top of it in Dart, so they behave
+/// identically everywhere.
 abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
   FlutterOnDeviceAiPlatform() : super(token: _token);
 
@@ -26,67 +30,31 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  /// Check whether an on-device AI model is available on this device.
-  Future<bool> isAvailable() {
-    throw UnimplementedError('isAvailable() has not been implemented.');
+  /// Current state of the native model, with a reason when it is not ready.
+  Future<OnDeviceAiAvailability> getAvailability() {
+    throw UnimplementedError('getAvailability() has not been implemented.');
   }
 
-  /// Returns a human-readable explanation when AI is not ready or unavailable.
-  Future<String> availabilityReason() {
-    throw UnimplementedError('availabilityReason() has not been implemented.');
-  }
-
-  /// Initializes the default model session with optional system instructions.
-  Future<bool> initialize({String? instructions}) {
-    throw UnimplementedError('initialize() has not been implemented.');
-  }
-
-  /// Generates text synchronously using the active or throwaway session.
-  Future<AiResponse> generateText({
-    required String prompt,
-    GenerationConfig? config,
-    String? instructions,
-  }) {
-    throw UnimplementedError('generateText() has not been implemented.');
-  }
-
-  /// Streams generated text delta chunks.
-  Stream<String> generateTextStream({
-    required String prompt,
-    GenerationConfig? config,
-    String? instructions,
-  }) {
-    throw UnimplementedError('generateTextStream() has not been implemented.');
-  }
-
-  /// Registers Dart-defined tools for native function calling.
-  Future<void> registerTools(List<OnDeviceAiTool> tools) {
-    throw UnimplementedError('registerTools() has not been implemented.');
-  }
-
-  /// Queries runtime capabilities of the detected backend.
+  /// What the native backend can do.
   Future<OnDeviceAiPlatformInfo> getPlatformInfo() {
     throw UnimplementedError('getPlatformInfo() has not been implemented.');
   }
 
-  /// Returns the model installation/download readiness status.
-  Future<ModelFeatureStatus> getModelStatus() {
-    throw UnimplementedError('getModelStatus() has not been implemented.');
-  }
-
-  /// Requests the OS or browser to download the required on-device model weights.
+  /// Asks the OS / browser to download the model, reporting progress.
+  ///
+  /// The stream completes when the model is ready or the download failed.
   Stream<ModelDownloadStatus> downloadModel() {
     throw UnimplementedError('downloadModel() has not been implemented.');
   }
 
-  /// Opens Google Play Store to install or update Google AICore (Android only).
-  Future<bool> openAICorePlayStore() {
-    throw UnimplementedError('openAICorePlayStore() has not been implemented.');
-  }
+  /// Opens the Google AICore page in Play Store (Android only).
+  Future<bool> openAICorePlayStore() async => false;
 
-  // --- Session Management ---
+  // --- Sessions -------------------------------------------------------------
 
-  /// Creates a new isolated conversation session.
+  /// Creates a conversation and returns its id.
+  ///
+  /// [tools] is non-null only when the backend reported native tool calling.
   Future<String> createSession({
     String? systemInstruction,
     List<OnDeviceAiTool>? tools,
@@ -95,12 +63,12 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
     throw UnimplementedError('createSession() has not been implemented.');
   }
 
-  /// Appends a query to an active session.
+  /// Adds a user text part to the pending turn.
   Future<void> sessionAddQuery(String sessionId, String text) {
     throw UnimplementedError('sessionAddQuery() has not been implemented.');
   }
 
-  /// Appends an image for multimodal input.
+  /// Adds a user image part to the pending turn.
   Future<void> sessionAddImage(
     String sessionId,
     Uint8List imageBytes, {
@@ -109,7 +77,7 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
     throw UnimplementedError('sessionAddImage() has not been implemented.');
   }
 
-  /// Generates the next response for a session.
+  /// Answers the pending turn.
   Future<AiResponse> sessionGetResponse(
     String sessionId, {
     GenerationConfig? config,
@@ -117,7 +85,7 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
     throw UnimplementedError('sessionGetResponse() has not been implemented.');
   }
 
-  /// Streams the next response for a session.
+  /// Answers the pending turn as a stream of text deltas.
   Stream<String> sessionGetResponseStream(
     String sessionId, {
     GenerationConfig? config,
@@ -127,19 +95,19 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
     );
   }
 
-  /// Measures exact or approximate token count for a session.
+  /// Token count of the whole conversation, or of [text] when given.
   Future<int> sessionCountTokens(String sessionId, {String? text}) {
     throw UnimplementedError('sessionCountTokens() has not been implemented.');
   }
 
-  /// Aborts generation in a session.
+  /// Cancels the generation in flight, if any.
   Future<void> sessionStopGeneration(String sessionId) {
     throw UnimplementedError(
       'sessionStopGeneration() has not been implemented.',
     );
   }
 
-  /// Closes an active session.
+  /// Releases the session.
   Future<void> sessionClose(String sessionId) {
     throw UnimplementedError('sessionClose() has not been implemented.');
   }

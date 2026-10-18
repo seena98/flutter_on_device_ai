@@ -1,5 +1,5 @@
-group = "com.example.flutter_on_device_ai"
-version = "1.0-SNAPSHOT"
+group = "dev.flutter_on_device_ai"
+version = "0.1.0"
 
 buildscript {
     val kotlinVersion = "2.2.20"
@@ -27,7 +27,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_on_device_ai"
+    namespace = "dev.flutter_on_device_ai"
 
     compileSdk = 36
 
@@ -44,33 +44,16 @@ android {
         getByName("main") {
             java.srcDirs("src/main/kotlin")
         }
-        getByName("test") {
-            java.srcDirs("src/test/kotlin")
-        }
     }
 
     defaultConfig {
-        minSdk = 24
-    }
-
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            all {
-                it.useJUnitPlatform()
-
-                it.outputs.upToDateWhen { false }
-
-                it.testLogging {
-                    events("passed", "skipped", "failed", "standardOut", "standardError")
-                    showStandardStreams = true
-                }
-            }
-        }
+        // ML Kit GenAI requires API 26.
+        minSdk = 26
     }
 }
 
 dependencies {
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
+    // Google ML Kit GenAI Prompt API (Gemini Nano through AICore).
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 }

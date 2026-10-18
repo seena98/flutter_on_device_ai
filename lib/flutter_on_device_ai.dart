@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'flutter_on_device_ai_platform_interface.dart';
+import 'src/exceptions.dart';
 import 'src/fallback/fallback_adapter.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
@@ -7,89 +9,228 @@ import 'src/models/generation_config.dart';
 import 'src/models/model_status.dart';
 import 'src/models/tool.dart';
 import 'src/session/on_device_ai_session.dart';
+import 'src/session/session_backend.dart';
+import 'src/session/tool_emulation.dart';
 
-export 'src/models/generation_config.dart';
-export 'src/models/ai_response.dart';
-export 'src/models/tool.dart';
-export 'src/models/capabilities.dart';
-export 'src/models/model_status.dart';
-export 'src/models/gen_ui_spec.dart';
-export 'src/session/on_device_ai_session.dart';
+export 'flutter_on_device_ai_stub.dart' show FlutterOnDeviceAiDesktopStub;
+export 'src/exceptions.dart';
 export 'src/fallback/fallback_adapter.dart';
-export 'src/fallback/gemma_fallback_adapter.dart';
+export 'src/fallback/edge_ai_fallback_adapter.dart';
+export 'src/genui/gen_ui_spec.dart';
+export 'src/genui/on_device_ui_generator.dart';
+export 'src/models/ai_response.dart';
+export 'src/models/capabilities.dart';
+export 'src/models/generation_config.dart';
+export 'src/models/model_status.dart';
+export 'src/models/tool.dart';
+export 'src/schema/json_schema.dart' show JsonSchema, JsonExtractor;
+export 'src/session/on_device_ai_session.dart';
 
-/// Primary interface for interacting with on-device AI models.
+/// Entry point for on-device generative AI.
 ///
-/// Automatically uses native OS-managed accelerators (Apple Foundation Models,
-/// Android Gemini Nano, Chrome Prompt API, Windows AI Foundry) and gracefully
-/// falls back to a provided [fallbackAdapter] (such as flutter_gemma) if the OS
-/// lacks native AI support.
+/// Uses the model the operating system already ships (Apple Foundation Models,
+/// Gemini Nano through Google AICore, Chrome's built-in Gemini Nano) and, when
+/// none is usable, transparently routes to a [fallbackAdapter].
+///
+/// ```dart
+/// final ai = FlutterOnDeviceAi();
+/// if (await ai.isAvailable()) {
+///   final answer = await ai.generateText(prompt: 'Hello!');
+///   print(answer.text);
+/// }
+/// ```
 class FlutterOnDeviceAi {
   static final FlutterOnDeviceAi _singleton = FlutterOnDeviceAi._internal();
 
-  /// Default singleton instance.
+  /// The shared default instance.
   factory FlutterOnDeviceAi() => _singleton;
 
   FlutterOnDeviceAi._internal();
 
-  /// Creates an instance with a customized [fallbackAdapter].
+  /// Creates an independent instance, optionally with a [fallbackAdapter].
   FlutterOnDeviceAi.withFallback({this.fallbackAdapter});
 
-  /// Optional pluggable fallback engine (e.g. [GemmaFallbackAdapter])
-  /// used automatically when the host device lacks OS-managed AI.
+  /// Engine used whenever the native model is not ready.
   OnDeviceAiFallbackAdapter? fallbackAdapter;
+
+  String? _defaultInstructions;
+  List<OnDeviceAiTool> _tools = const [];
 
   FlutterOnDeviceAiPlatform get _platform => FlutterOnDeviceAiPlatform.instance;
 
-  /// Probes whether local on-device AI is available on this device.
+  // --- Availability ---------------------------------------------------------
+
+  /// Detailed state of the *native* model (ignores the fallback).
+  Future<OnDeviceAiAvailability> availability() => _platform.getAvailability();
+
+  /// Whether a request made now will be answered: by the native model or by a
+  /// ready fallback.
   Future<bool> isAvailable() async {
-    final nativeAvailable = await _platform.isAvailable();
-    if (nativeAvailable) return true;
-    if (fallbackAdapter != null) {
-      return await fallbackAdapter!.isReady();
-    }
-    return false;
+    if ((await availability()).isReady) return true;
+    return await _fallbackReady();
   }
 
-  /// Returns diagnostic information explaining why on-device AI is unavailable.
+  /// Why the native model is unavailable, in a sentence fit for the UI.
   Future<String> availabilityReason() async {
-    final nativeAvailable = await _platform.isAvailable();
-    if (!nativeAvailable && fallbackAdapter != null) {
-      return 'Native OS model is unavailable; utilizing ${fallbackAdapter!.name} fallback.';
+    final native = await availability();
+    if (!native.isReady && await _fallbackReady()) {
+      return '${native.message} Using the ${fallbackAdapter!.name} fallback.';
     }
-    return await _platform.availabilityReason();
+    return native.message;
   }
 
-  /// Initializes the default model session with instructions.
+  /// Native model readiness (`available`, `downloadable`, ...).
+  Future<ModelFeatureStatus> getModelStatus() async =>
+      (await availability()).status;
+
+  /// What the native backend supports (ignores emulation and fallback).
+  Future<OnDeviceAiPlatformInfo> getPlatformInfo() =>
+      _platform.getPlatformInfo();
+
+  /// What your app can use *right now*, including this package's emulation
+  /// layers and the fallback. Prefer this over checking the platform.
+  Future<OnDeviceAiCapabilities> capabilities() async {
+    final native = (await availability()).isReady;
+    if (!native && await _fallbackReady()) {
+      return const OnDeviceAiCapabilities(
+        backend: OnDeviceAiBackend.fallbackEdgeAi,
+        toolCalling: CapabilitySupport.emulated,
+        structuredOutput: CapabilitySupport.emulated,
+      );
+    }
+    final info = await _platform.getPlatformInfo();
+    return OnDeviceAiCapabilities(
+      backend: native ? info.backend : OnDeviceAiBackend.unsupported,
+      toolCalling: !native
+          ? CapabilitySupport.unsupported
+          : info.supportsToolCalling
+          ? CapabilitySupport.native
+          : CapabilitySupport.emulated,
+      structuredOutput: !native
+          ? CapabilitySupport.unsupported
+          : info.supportsStructuredOutput
+          ? CapabilitySupport.native
+          : CapabilitySupport.emulated,
+      imageInput: native && info.supportsVision,
+      exactTokenCounts: native && info.supportsExactTokenCounts,
+      modelDownload: info.supportsModelDownload,
+    );
+  }
+
+  Future<bool> _fallbackReady() async {
+    final adapter = fallbackAdapter;
+    if (adapter == null) return false;
+    try {
+      return await adapter.isReady();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // --- Model download -------------------------------------------------------
+
+  /// Asks the OS / browser to download the model and reports progress.
+  Stream<ModelDownloadStatus> downloadModel() => _platform.downloadModel();
+
+  /// Opens Google AICore in the Play Store (Android only).
+  Future<bool> openAICorePlayStore() => _platform.openAICorePlayStore();
+
+  /// Makes sure the native model is ready, downloading it if needed.
+  ///
+  /// On the web call this from a user gesture (click / tap), otherwise
+  /// [OnDeviceAiUserActivationRequiredException] is thrown. Throws
+  /// [OnDeviceAiUnavailableException] when the device cannot run the model.
+  static Future<void> ensureReady({
+    void Function(double progress)? onProgress,
+  }) => FlutterOnDeviceAi().prepare(onProgress: onProgress);
+
+  /// Instance form of [ensureReady].
+  Future<void> prepare({void Function(double progress)? onProgress}) async {
+    final state = await availability();
+    if (state.isReady) {
+      onProgress?.call(1.0);
+      return;
+    }
+    if (state.status == ModelFeatureStatus.unavailable) {
+      throw OnDeviceAiUnavailableException(state.message);
+    }
+
+    String? failure;
+    var ready = false;
+    await for (final event in _platform.downloadModel()) {
+      final p = event.progress;
+      if (p != null) onProgress?.call(p.clamp(0.0, 1.0));
+      if (event.status == ModelFeatureStatus.available) {
+        ready = true;
+      } else if (event.status == ModelFeatureStatus.unavailable) {
+        failure = event.errorMessage ?? 'unavailable';
+      }
+    }
+    if (failure != null) {
+      throw OnDeviceAiUnavailableException('Model download failed: $failure');
+    }
+    if (!ready && !(await availability()).isReady) {
+      throw const OnDeviceAiUnavailableException(
+        'The model download ended before the model became ready.',
+      );
+    }
+    onProgress?.call(1.0);
+  }
+
+  // --- One-shot API ---------------------------------------------------------
+
+  /// Sets default [instructions] for one-shot calls.
   Future<bool> initialize({String? instructions}) async {
-    return await _platform.initialize(instructions: instructions);
+    _defaultInstructions = instructions;
+    return isAvailable();
   }
 
-  /// Generates text with generation configurations.
+  /// Registers [tools] for one-shot calls ([generateText] and friends).
+  /// Sessions take their own tools in [createSession].
+  Future<void> registerTools(List<OnDeviceAiTool> tools) async {
+    _tools = List.unmodifiable(tools);
+  }
+
+  /// Generates a complete answer to [prompt] in a throw-away session.
   Future<AiResponse> generateText({
     required String prompt,
     GenerationConfig? config,
     String? instructions,
   }) async {
-    final nativeAvailable = await _platform.isAvailable();
-    if (!nativeAvailable && fallbackAdapter != null) {
-      return await fallbackAdapter!.generateText(
-        prompt: prompt,
-        config: config,
-        instructions: instructions,
-      );
-    }
-    return await _platform.generateText(
-      prompt: prompt,
+    final session = await createSession(
+      systemInstruction: instructions,
+      tools: _tools,
       config: config,
-      instructions: instructions,
     );
+    try {
+      return await session.ask(prompt);
+    } finally {
+      await session.close();
+    }
   }
 
-  /// Convenient helper to generate text and return just the text string.
+  /// Streams the answer to [prompt] as text deltas.
+  Stream<String> generateTextStream({
+    required String prompt,
+    GenerationConfig? config,
+    String? instructions,
+  }) async* {
+    final session = await createSession(
+      systemInstruction: instructions,
+      tools: _tools,
+      config: config,
+    );
+    try {
+      yield* session.askStream(prompt);
+    } finally {
+      await session.close();
+    }
+  }
+
+  /// Shortcut returning only the text.
   Future<String> generateTextSimple({
     required String prompt,
-    int maxTokens = 100,
+    int maxTokens = 256,
   }) async {
     final res = await generateText(
       prompt: prompt,
@@ -98,127 +239,74 @@ class FlutterOnDeviceAi {
     return res.text;
   }
 
-  /// Streams generated text delta tokens as they decode.
-  Stream<String> generateTextStream({
-    required String prompt,
-    GenerationConfig? config,
-    String? instructions,
-  }) {
-    if (fallbackAdapter != null) {
-      // Check asynchronously and route
-      final controller = StreamController<String>();
-      _platform.isAvailable().then((nativeAvailable) {
-        if (!nativeAvailable) {
-          fallbackAdapter!
-              .generateTextStream(
-                prompt: prompt,
-                config: config,
-                instructions: instructions,
-              )
-              .listen(
-                controller.add,
-                onError: controller.addError,
-                onDone: controller.close,
-              );
-        } else {
-          _platform
-              .generateTextStream(
-                prompt: prompt,
-                config: config,
-                instructions: instructions,
-              )
-              .listen(
-                controller.add,
-                onError: controller.addError,
-                onDone: controller.close,
-              );
-        }
-      });
-      return controller.stream;
-    }
-    return _platform.generateTextStream(
-      prompt: prompt,
-      config: config,
-      instructions: instructions,
-    );
-  }
+  // --- Sessions -------------------------------------------------------------
 
-  /// Registers Dart tools the model can invoke during generation.
-  Future<void> registerTools(List<OnDeviceAiTool> tools) async {
-    await _platform.registerTools(tools);
-  }
-
-  /// Queries runtime platform backend and capabilities.
-  Future<OnDeviceAiPlatformInfo> getPlatformInfo() async {
-    return await _platform.getPlatformInfo();
-  }
-
-  /// Queries model readiness / download status.
-  Future<ModelFeatureStatus> getModelStatus() async {
-    return await _platform.getModelStatus();
-  }
-
-  /// Requests the OS or browser to download model assets, reporting progress.
-  Stream<ModelDownloadStatus> downloadModel() {
-    return _platform.downloadModel();
-  }
-
-  /// Opens Google Play Store to install or update AICore (Android only).
-  Future<bool> openAICorePlayStore() async {
-    return await _platform.openAICorePlayStore();
-  }
-
-  /// Creates a multi-turn, stateful conversation session.
+  /// Opens a multi-turn conversation.
+  ///
+  /// Tools are called natively where the OS supports it and through a
+  /// prompt-based loop elsewhere ([OnDeviceAiCapabilities.toolCalling] tells
+  /// which). If the native model is not ready and a fallback adapter exists,
+  /// the session runs on the fallback.
   Future<OnDeviceAiSession> createSession({
     String? systemInstruction,
     List<OnDeviceAiTool>? tools,
     GenerationConfig? config,
+    int maxToolRounds = 5,
   }) async {
+    final instruction = systemInstruction ?? _defaultInstructions;
+    final toolList = tools ?? const <OnDeviceAiTool>[];
+
+    final native = await availability();
+    if (!native.isReady) {
+      final adapter = fallbackAdapter;
+      if (adapter != null && await _fallbackReady()) {
+        final composed = _withToolPrompt(instruction, toolList);
+        return OnDeviceAiSession.fromBackend(
+          sessionId: 'fallback_${DateTime.now().microsecondsSinceEpoch}',
+          backend: FallbackSessionBackend(
+            adapter: adapter,
+            systemInstruction: composed,
+          ),
+          systemInstruction: instruction,
+          tools: toolList,
+          config: config,
+          maxToolRounds: maxToolRounds,
+        );
+      }
+      throw OnDeviceAiUnavailableException(native.message);
+    }
+
+    final info = await _platform.getPlatformInfo();
+    final nativeTools = info.supportsToolCalling;
     final sessionId = await _platform.createSession(
-      systemInstruction: systemInstruction,
-      tools: tools,
+      systemInstruction: nativeTools
+          ? instruction
+          : _withToolPrompt(instruction, toolList),
+      tools: nativeTools && toolList.isNotEmpty ? toolList : null,
       config: config,
     );
-    return OnDeviceAiSession(
+    return OnDeviceAiSession.fromBackend(
       sessionId: sessionId,
-      systemInstruction: systemInstruction,
-      tools: tools ?? const [],
-      platform: _platform,
+      backend: PlatformSessionBackend(
+        sessionId: sessionId,
+        platform: _platform,
+        nativeTools: nativeTools,
+        nativeStructuredOutput: info.supportsStructuredOutput,
+        supportsImages: info.supportsVision,
+        exactTokenCounts: info.supportsExactTokenCounts,
+      ),
+      systemInstruction: instruction,
+      tools: toolList,
+      config: config,
+      maxToolRounds: maxToolRounds,
     );
   }
 
-  /// Prepares the on-device model, starting download if required, and awaiting readiness.
-  static Future<void> ensureReady({
-    void Function(double progress)? onProgress,
-  }) async {
-    final ai = FlutterOnDeviceAi();
-    final status = await ai.getModelStatus();
-    if (status == ModelFeatureStatus.available) {
-      onProgress?.call(1.0);
-      return;
-    }
-
-    final completer = Completer<void>();
-    late StreamSubscription<ModelDownloadStatus> sub;
-    sub = ai.downloadModel().listen((event) {
-      if (event.progress != null) {
-        onProgress?.call(event.progress!);
-      }
-      if (event.status == ModelFeatureStatus.available) {
-        sub.cancel();
-        if (!completer.isCompleted) completer.complete();
-      } else if (event.status == ModelFeatureStatus.unavailable) {
-        sub.cancel();
-        if (!completer.isCompleted) {
-          completer.completeError(
-            StateError(
-              'Model download failed: ${event.errorMessage ?? "unavailable"}',
-            ),
-          );
-        }
-      }
-    });
-
-    return completer.future;
+  String? _withToolPrompt(String? instruction, List<OnDeviceAiTool> tools) {
+    if (tools.isEmpty) return instruction;
+    final block = emulatedToolInstruction(tools);
+    return instruction == null || instruction.isEmpty
+        ? block
+        : '$instruction\n\n$block';
   }
 }

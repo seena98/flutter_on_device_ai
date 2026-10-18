@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="t d">
+  <title id="t">flutter_on_device_ai</title>
+  <desc id="d">On-device generative AI for Flutter that uses the model the operating system already ships.</desc>
+  <style>
+    .bg { fill: #0f172a; }
+    .title { font: 700 56px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #f8fafc; }
+    .sub { font: 400 24px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #cbd5e1; }
+    .chip { fill: #134e4a; stroke: #2dd4bf; stroke-width: 1.5; }
+    .chipt { font: 600 18px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #ccfbf1; }
+    .chipf { fill: #1e293b; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .chipft { font: 600 18px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #cbd5e1; }
+  </style>
+  <rect class="bg" width="1200" height="360" rx="24"/>
+  <text class="title" x="64" y="132">flutter_on_device_ai</text>
+  <text class="sub" x="64" y="182">Generative AI that ships with the device. No model in your app.</text>
+
+  <rect class="chip" x="64" y="236" width="260" height="52" rx="26"/>
+  <text class="chipt" x="194" y="269" text-anchor="middle">Apple Foundation Models</text>
+  <rect class="chip" x="340" y="236" width="170" height="52" rx="26"/>
+  <text class="chipt" x="425" y="269" text-anchor="middle">Gemini Nano</text>
+  <rect class="chip" x="526" y="236" width="208" height="52" rx="26"/>
+  <text class="chipt" x="630" y="269" text-anchor="middle">Chrome built-in AI</text>
+  <rect class="chipf" x="750" y="236" width="252" height="52" rx="26"/>
+  <text class="chipft" x="876" y="269" text-anchor="middle">your fallback (Edge AI…)</text>
+</svg>

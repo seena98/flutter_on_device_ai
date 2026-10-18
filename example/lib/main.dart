@@ -1,746 +1,668 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
 
-void main() {
-  runApp(const OnDeviceAiExampleApp());
-}
+void main() => runApp(const ExampleApp());
 
-class OnDeviceAiExampleApp extends StatelessWidget {
-  const OnDeviceAiExampleApp({super.key});
+class ExampleApp extends StatelessWidget {
+  const ExampleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    ThemeData theme(Brightness b) => ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF0F766E),
+        brightness: b,
+      ),
+    );
     return MaterialApp(
-      title: 'flutter_on_device_ai Showcase',
+      title: 'On-device AI',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-          brightness: Brightness.dark,
-        ),
-      ),
-      themeMode: ThemeMode.system,
-      home: const MainShowcaseScreen(),
+      theme: theme(Brightness.light),
+      darkTheme: theme(Brightness.dark),
+      home: const Home(),
     );
   }
 }
 
-class MainShowcaseScreen extends StatefulWidget {
-  const MainShowcaseScreen({super.key});
+/// A canned-answer engine used ONLY to exercise the UI on machines without an
+/// OS model (desktop, simulators). It is not an AI.
+OnDeviceAiFallbackAdapter demoFallback() => EdgeAiFallbackAdapter(
+  modelName: 'demo echo engine',
+  onGenerateText: (prompt, {config, instructions}) async =>
+      '[demo engine - no real model] ${prompt.split('\n').lastWhere((l) => l.trim().isNotEmpty && !l.startsWith('Assistant:'), orElse: () => prompt)}',
+);
+
+class Home extends StatefulWidget {
+  const Home({super.key});
 
   @override
-  State<MainShowcaseScreen> createState() => _MainShowcaseScreenState();
+  State<Home> createState() => _HomeState();
 }
 
-class _MainShowcaseScreenState extends State<MainShowcaseScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final FlutterOnDeviceAi _ai = FlutterOnDeviceAi();
+class _HomeState extends State<Home> {
+  final _ai = FlutterOnDeviceAi.withFallback();
 
-  bool _isChecking = true;
-  bool _isAvailable = false;
-  String _availabilityReason = '';
-  OnDeviceAiPlatformInfo? _platformInfo;
-  ModelFeatureStatus _modelStatus = ModelFeatureStatus.unavailable;
-
-  // Chat Tab State
-  final TextEditingController _promptController = TextEditingController();
-  final List<Map<String, String>> _messages = [];
-  bool _isGenerating = false;
-  String _streamBuffer = '';
-  int _lastLatencyMs = 0;
-  int _lastTokenCount = 0;
-  OnDeviceAiSession? _session;
-
-  // JSON Tab State
-  String? _jsonOutput;
-  bool _isJsonLoading = false;
-
-  // Tool Call State
-  final List<String> _toolLogs = [];
-  bool _isToolCalling = false;
-
-  // GenUI State
-  GenUiModuleSpec? _generatedModule;
-  bool _isGeneratingUi = false;
+  OnDeviceAiAvailability? _availability;
+  OnDeviceAiCapabilities? _caps;
+  bool _demoFallback = false;
+  double? _downloadProgress;
+  String? _setupError;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-    _initializeAi();
+    _refresh();
   }
 
-  Future<void> _initializeAi() async {
-    setState(() => _isChecking = true);
-    final available = await _ai.isAvailable();
-    final reason = await _ai.availabilityReason();
-    final info = await _ai.getPlatformInfo();
-    final status = await _ai.getModelStatus();
+  Future<void> _refresh() async {
+    _ai.fallbackAdapter = _demoFallback ? demoFallback() : null;
+    final availability = await _ai.availability();
+    final caps = await _ai.capabilities();
+    if (!mounted) return;
+    setState(() {
+      _availability = availability;
+      _caps = caps;
+    });
+  }
 
-    // Register demo tool
-    await _ai.registerTools([
-      OnDeviceAiTool(
-        name: 'setThermostat',
-        description: 'Adjusts room temperature in Celsius.',
-        parameters: const [
-          ToolParameter(
-            name: 'temp',
-            type: ToolArgumentType.number,
-            description: 'Target temperature in Celsius',
+  Future<void> _prepare() async {
+    setState(() {
+      _setupError = null;
+      _downloadProgress = 0;
+    });
+    try {
+      await _ai.prepare(
+        onProgress: (p) => setState(() => _downloadProgress = p),
+      );
+    } on OnDeviceAiException catch (e) {
+      _setupError = e.message;
+    }
+    _downloadProgress = null;
+    await _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready =
+        _caps != null && _caps!.backend != OnDeviceAiBackend.unsupported;
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('On-device AI'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Chat'),
+              Tab(text: 'Extract'),
+              Tab(text: 'Tools'),
+              Tab(text: 'Screen'),
+            ],
           ),
-        ],
-        onCall: (args) {
-          final temp = args['temp'] ?? 21.0;
-          setState(() {
-            _toolLogs.add(
-              '🛠️ Tool Callback Triggered: setThermostat(temp: $temp°C)',
-            );
-          });
-          return {'status': 'success', 'updatedTemperature': temp};
-        },
-      ),
-    ]);
-
-    _session = await _ai.createSession(
-      systemInstruction: 'You are a concise, helpful on-device AI assistant.',
-    );
-
-    if (mounted) {
-      setState(() {
-        _isAvailable = available;
-        _availabilityReason = reason;
-        _platformInfo = info;
-        _modelStatus = status;
-        _isChecking = false;
-      });
-    }
-  }
-
-  Future<void> _sendStreamPrompt() async {
-    final text = _promptController.text.trim();
-    if (text.isEmpty || _isGenerating) return;
-
-    _promptController.clear();
-    setState(() {
-      _messages.add({'sender': 'user', 'text': text});
-      _isGenerating = true;
-      _streamBuffer = '';
-    });
-
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      final stream = _ai.generateTextStream(prompt: text);
-      await for (final chunk in stream) {
-        if (!mounted) return;
-        setState(() {
-          _streamBuffer += chunk;
-        });
-      }
-      stopwatch.stop();
-
-      setState(() {
-        _messages.add({'sender': 'ai', 'text': _streamBuffer});
-        _streamBuffer = '';
-        _lastLatencyMs = stopwatch.elapsedMilliseconds;
-        _lastTokenCount = (text.length + _streamBuffer.length) ~/ 4;
-        _isGenerating = false;
-      });
-    } catch (e) {
-      setState(() {
-        _messages.add({'sender': 'ai', 'text': 'Error: $e'});
-        _isGenerating = false;
-      });
-    }
-  }
-
-  Future<void> _generateStructuredJson() async {
-    setState(() {
-      _isJsonLoading = true;
-      _jsonOutput = null;
-    });
-
-    try {
-      final res = await _ai.generateText(
-        prompt:
-            'Extract profile: "Sarah Jenkins, Lead Architect, 8 years experience, expert in Flutter & Swift"',
-        config: const GenerationConfig(
-          responseFormat: ResponseFormat.json,
-          schema: {
-            'type': 'object',
-            'properties': {
-              'fullName': {'type': 'string'},
-              'title': {'type': 'string'},
-              'experienceYears': {'type': 'integer'},
-              'skills': {
-                'type': 'array',
-                'items': {'type': 'string'},
-              },
-            },
-            'required': ['fullName', 'title', 'skills'],
-          },
         ),
-      );
-
-      setState(() {
-        _jsonOutput = res.text;
-        _isJsonLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _jsonOutput = 'Failed: $e';
-        _isJsonLoading = false;
-      });
-    }
+        body: Column(
+          children: [
+            _StatusBar(
+              availability: _availability,
+              caps: _caps,
+              progress: _downloadProgress,
+              error: _setupError,
+              demo: _demoFallback,
+              onDemo: (v) {
+                _demoFallback = v;
+                _refresh();
+              },
+              onPrepare: _prepare,
+            ),
+            Expanded(
+              child: ready
+                  ? TabBarView(
+                      children: [
+                        ChatTab(ai: _ai),
+                        ExtractTab(ai: _ai),
+                        ToolsTab(ai: _ai),
+                        ScreenTab(ai: _ai),
+                      ],
+                    )
+                  : const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No model is usable on this device yet. Follow the '
+                          'message above, or switch on the demo engine to try the UI.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  Future<void> _runToolCallDemo() async {
-    setState(() {
-      _isToolCalling = true;
-      _toolLogs.add(
-        'Invoking prompt: "Please set the thermostat to 22.5 degrees"',
-      );
-    });
-
-    try {
-      final res = await _ai.generateText(
-        prompt: 'Please set the thermostat to 22.5 degrees',
-      );
-      setState(() {
-        _toolLogs.add('Model Response: "${res.text}"');
-        _isToolCalling = false;
-      });
-    } catch (e) {
-      setState(() {
-        _toolLogs.add('Tool execution finished with note: $e');
-        _isToolCalling = false;
-      });
-    }
-  }
-
-  Future<void> _generateUiModule() async {
-    setState(() {
-      _isGeneratingUi = true;
-      _generatedModule = null;
-    });
-
-    try {
-      const mockGoal = '''
-```json
-{
-  "title": "Weekend 10K Running Prep",
-  "icon": "fitness_center",
-  "tone": "motivational",
-  "blurb": "Stay on track for your personal best this Saturday morning.",
-  "blocks": [
-    {"type": "stat", "label": "Target Pace", "value": "5:15 /km", "subtext": "Aerobic zone"},
-    {"type": "progress", "label": "Weekly Mileage", "current": 24, "target": 35, "unit": "km"},
-    {"type": "checklist", "items": [{"title": "Hydration (3L today)", "completed": true}, {"title": "Light 4km warmup jog", "completed": false}, {"title": "Carb load dinner", "completed": false}]}
-  ]
 }
-```
-''';
-      await Future.delayed(const Duration(milliseconds: 300));
-      final spec = OnDeviceUiGenerator.parseModelOutput(mockGoal);
+
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({
+    required this.availability,
+    required this.caps,
+    required this.progress,
+    required this.error,
+    required this.demo,
+    required this.onDemo,
+    required this.onPrepare,
+  });
+
+  final OnDeviceAiAvailability? availability;
+  final OnDeviceAiCapabilities? caps;
+  final double? progress;
+  final String? error;
+  final bool demo;
+  final ValueChanged<bool> onDemo;
+  final VoidCallback onPrepare;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = availability;
+    final c = caps;
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              a == null
+                  ? 'Probing…'
+                  : '${c?.backend.name ?? '?'} · ${a.status.name}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            if (a != null)
+              Text(a.message, style: Theme.of(context).textTheme.bodySmall),
+            if (c != null)
+              Text(
+                'tools: ${c.toolCalling.name} · structured: ${c.structuredOutput.name} · '
+                'images: ${c.imageInput} · exact tokens: ${c.exactTokenCounts}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (progress != null) LinearProgressIndicator(value: progress),
+            if (error != null)
+              Text(error!, style: TextStyle(color: scheme.error)),
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (a != null &&
+                    !a.isReady &&
+                    a.status != ModelFeatureStatus.unavailable)
+                  FilledButton.tonal(
+                    onPressed: onPrepare,
+                    child: const Text('Download model'),
+                  ),
+                if (a?.reason == AvailabilityReason.systemComponentMissing)
+                  FilledButton.tonal(
+                    onPressed: () => FlutterOnDeviceAi().openAICorePlayStore(),
+                    child: const Text('Open AICore in Play Store'),
+                  ),
+                if (a != null && !a.isReady) ...[
+                  Switch(value: demo, onChanged: onDemo),
+                  const Text('demo engine (UI test only)'),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatTab extends StatefulWidget {
+  const ChatTab({super.key, required this.ai});
+  final FlutterOnDeviceAi ai;
+
+  @override
+  State<ChatTab> createState() => _ChatTabState();
+}
+
+class _ChatTabState extends State<ChatTab> {
+  final _input = TextEditingController();
+  final _messages = <(bool, String)>[];
+  OnDeviceAiSession? _session;
+  String _live = '';
+  bool _busy = false;
+  int? _tokens;
+
+  Future<void> _send() async {
+    final text = _input.text.trim();
+    if (text.isEmpty || _busy) return;
+    _input.clear();
+    setState(() {
+      _messages.add((true, text));
+      _busy = true;
+      _live = '';
+    });
+    try {
+      _session ??= await widget.ai.createSession(
+        systemInstruction: 'You are a concise, friendly assistant.',
+      );
+      await for (final chunk in _session!.askStream(text)) {
+        setState(() => _live += chunk);
+      }
+      _tokens = await _session!.countTokens();
+      setState(() => _messages.add((false, _live)));
+    } on OnDeviceAiCancelledException {
+      setState(() => _messages.add((false, '$_live (stopped)')));
+    } on OnDeviceAiException catch (e) {
+      setState(() => _messages.add((false, 'Error: ${e.message}')));
+    } finally {
       setState(() {
-        _generatedModule = spec;
-        _isGeneratingUi = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isGeneratingUi = false;
+        _live = '';
+        _busy = false;
       });
     }
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _promptController.dispose();
     _session?.close();
+    _input.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.memory, color: Color(0xFF6366F1)),
-            SizedBox(width: 8),
-            Text(
-              'On-Device Local AI',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Streaming Chat'),
-            Tab(icon: Icon(Icons.data_object), text: 'JSON Schema'),
-            Tab(icon: Icon(Icons.build_circle_outlined), text: 'Tool Calling'),
-            Tab(icon: Icon(Icons.dashboard_customize_outlined), text: 'GenUI'),
-            Tab(icon: Icon(Icons.health_and_safety_outlined), text: 'Doctor'),
-          ],
-        ),
-      ),
-      body: _isChecking
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildDiagnosticBanner(theme),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildChatTab(theme),
-                      _buildJsonTab(theme),
-                      _buildToolCallTab(theme),
-                      _buildGenUiTab(theme),
-                      _buildDoctorTab(theme),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildDiagnosticBanner(ThemeData theme) {
-    final isAvailable = _isAvailable;
-    final backendName = _platformInfo?.backend.name ?? 'probing...';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isAvailable
-            ? Colors.green.withAlpha(25)
-            : Colors.orange.withAlpha(25),
-        border: Border(
-          bottom: BorderSide(
-            color: isAvailable ? Colors.green.shade300 : Colors.orange.shade300,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isAvailable ? Icons.check_circle : Icons.warning_amber_rounded,
-            color: isAvailable ? Colors.green : Colors.orange,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Backend: $backendName (${_modelStatus.name})',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-          ),
-          if (_lastLatencyMs > 0)
-            Chip(
-              visualDensity: VisualDensity.compact,
-              label: Text(
-                '${_lastLatencyMs}ms · $_lastTokenCount tokens',
-                style: const TextStyle(fontSize: 11),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatTab(ThemeData theme) {
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
+          child: ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: _messages.length + (_streamBuffer.isNotEmpty ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == _messages.length && _streamBuffer.isNotEmpty) {
-                return _buildMessageBubble(
-                  'ai',
-                  _streamBuffer,
-                  isStreaming: true,
-                );
-              }
-              final msg = _messages[index];
-              return _buildMessageBubble(msg['sender']!, msg['text']!);
-            },
+            children: [
+              for (final m in _messages) _Bubble(fromUser: m.$1, text: m.$2),
+              if (_live.isNotEmpty) _Bubble(fromUser: false, text: _live),
+            ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            border: Border(top: BorderSide(color: theme.dividerColor)),
+        if (_tokens != null)
+          Text(
+            'conversation: ~$_tokens tokens',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
+        Padding(
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Expanded(
                 child: TextField(
-                  controller: _promptController,
+                  controller: _input,
+                  onSubmitted: (_) => _send(),
                   decoration: const InputDecoration(
-                    hintText: 'Ask anything to the local model...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(24)),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
+                    hintText: 'Message',
+                    border: OutlineInputBorder(),
                   ),
-                  onSubmitted: (_) => _sendStreamPrompt(),
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(
-                icon: _isGenerating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.arrow_upward),
-                onPressed: _isGenerating ? null : _sendStreamPrompt,
-              ),
+              _busy
+                  ? IconButton.filledTonal(
+                      onPressed: () => _session?.stopGeneration(),
+                      icon: const Icon(Icons.stop),
+                    )
+                  : IconButton.filled(
+                      onPressed: _send,
+                      icon: const Icon(Icons.send),
+                    ),
             ],
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildMessageBubble(
-    String sender,
-    String text, {
-    bool isStreaming = false,
-  }) {
-    final isUser = sender == 'user';
+class _Bubble extends StatelessWidget {
+  const _Bubble({required this.fromUser, required this.text});
+  final bool fromUser;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: fromUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        constraints: const BoxConstraints(maxWidth: 320),
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(maxWidth: 520),
         decoration: BoxDecoration(
-          color: isUser
-              ? const Color(0xFF6366F1)
-              : (Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey.shade800
-                    : Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(16),
+          color: fromUser
+              ? scheme.primaryContainer
+              : scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(14),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(text, style: TextStyle(color: isUser ? Colors.white : null)),
-            if (isStreaming)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  '⚡ streaming live...',
-                  style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
-                ),
-              ),
-          ],
+        child: SelectableText(text),
+      ),
+    );
+  }
+}
+
+class ExtractTab extends StatefulWidget {
+  const ExtractTab({super.key, required this.ai});
+  final FlutterOnDeviceAi ai;
+
+  @override
+  State<ExtractTab> createState() => _ExtractTabState();
+}
+
+class _ExtractTabState extends State<ExtractTab> {
+  final _input = TextEditingController(
+    text:
+        'Elena Rostova is a principal engineer with 9 years in ML. '
+        'She specialises in compilers and distributed systems.',
+  );
+  String _out = '';
+  bool _busy = false;
+
+  static const _schema = {
+    'type': 'object',
+    'properties': {
+      'name': {'type': 'string'},
+      'role': {'type': 'string'},
+      'yearsExperience': {'type': 'integer', 'minimum': 0},
+      'specialties': {
+        'type': 'array',
+        'items': {'type': 'string'},
+      },
+    },
+    'required': ['name', 'role', 'specialties'],
+  };
+
+  Future<void> _run() async {
+    setState(() {
+      _busy = true;
+      _out = '';
+    });
+    try {
+      final res = await widget.ai.generateText(
+        prompt: 'Extract the person described here:\n${_input.text}',
+        config: const GenerationConfig(
+          responseFormat: ResponseFormat.json,
+          schema: _schema,
         ),
-      ),
-    );
+      );
+      setState(() => _out = 'Parsed: ${res.json}');
+    } on OnDeviceAiException catch (e) {
+      setState(() => _out = '${e.runtimeType}: ${e.message}');
+    } finally {
+      setState(() => _busy = false);
+    }
   }
 
-  Widget _buildJsonTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Schema-Constrained JSON Mode',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Constrains on-device generation to emit strict JSON matching a defined schema with zero hallucinations.',
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isJsonLoading ? null : _generateStructuredJson,
-            icon: const Icon(Icons.smart_toy),
-            label: const Text('Extract Profile into JSON Schema'),
-          ),
-          const SizedBox(height: 20),
-          if (_isJsonLoading) const Center(child: CircularProgressIndicator()),
-          if (_jsonOutput != null)
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: theme.colorScheme.outlineVariant),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SelectableText(
-                  _jsonOutput!,
-                  style: const TextStyle(fontFamily: 'Courier', fontSize: 13),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolCallTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Native Tool Calling (Function Calling)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'The model autonomously decides when to trigger Dart handlers. Registered tool: setThermostat(temp)',
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isToolCalling ? null : _runToolCallDemo,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Ask AI to Adjust Thermostat'),
-          ),
-          const SizedBox(height: 20),
-          if (_toolLogs.isNotEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _toolLogs
-                      .map(
-                        (log) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            log,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGenUiTab(ThemeData theme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Generative UI (genUI Integration)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Turns a natural language goal into dynamic typed UI blocks rendered on the fly.',
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _isGeneratingUi ? null : _generateUiModule,
-            icon: const Icon(Icons.dashboard_customize),
-            label: const Text('Generate 10K Running Prep Module'),
-          ),
-          const SizedBox(height: 20),
-          if (_isGeneratingUi) const Center(child: CircularProgressIndicator()),
-          if (_generatedModule != null)
-            _buildRenderedGenUiModule(_generatedModule!, theme),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRenderedGenUiModule(GenUiModuleSpec spec, ThemeData theme) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.fitness_center, color: Color(0xFF6366F1)),
-                const SizedBox(width: 8),
-                Text(
-                  spec.title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              spec.blurb,
-              style: TextStyle(color: theme.textTheme.bodySmall?.color),
-            ),
-            const Divider(height: 24),
-            ...spec.blocks.map((block) {
-              final type = block['type'];
-              if (type == 'stat') {
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    block['label'] ?? '',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: Text(
-                    block['value'] ?? '',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                  subtitle: Text(block['subtext'] ?? ''),
-                );
-              } else if (type == 'progress') {
-                final current = (block['current'] as num?)?.toDouble() ?? 0;
-                final target = (block['target'] as num?)?.toDouble() ?? 100;
-                final unit = block['unit'] ?? '';
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${block['label']}: ${current.toInt()} / ${target.toInt()} $unit',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    LinearProgressIndicator(
-                      value: current / target,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                );
-              } else if (type == 'checklist') {
-                final items = block['items'] as List? ?? [];
-                return Column(
-                  children: items
-                      .map(
-                        (it) => CheckboxListTile(
-                          value: it['completed'] as bool? ?? false,
-                          onChanged: (v) {},
-                          title: Text(
-                            it['title'] ?? '',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      )
-                      .toList(),
-                );
-              }
-              return const SizedBox.shrink();
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDoctorTab(ThemeData theme) {
+  @override
+  Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       children: [
-        const Text(
-          'On-Device AI Diagnostics Doctor',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        TextField(
+          controller: _input,
+          maxLines: 4,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
         ),
         const SizedBox(height: 12),
-        ListTile(
-          leading: const Icon(Icons.phonelink_setup),
-          title: const Text('Native Backend'),
-          subtitle: Text(_platformInfo?.backend.name ?? 'unknown'),
+        FilledButton(
+          onPressed: _busy ? null : _run,
+          child: const Text('Extract as JSON'),
         ),
-        ListTile(
-          leading: const Icon(Icons.info_outline),
-          title: const Text('Availability Diagnosis'),
-          subtitle: Text(_availabilityReason),
-        ),
-        ListTile(
-          leading: const Icon(Icons.download),
-          title: const Text('Model Feature Status'),
-          subtitle: Text(_modelStatus.name),
-        ),
-        ListTile(
-          leading: const Icon(Icons.code),
-          title: const Text('Structured Output Support'),
-          trailing: Icon(
-            _platformInfo?.supportsStructuredOutput == true
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: _platformInfo?.supportsStructuredOutput == true
-                ? Colors.green
-                : Colors.grey,
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.build),
-          title: const Text('Tool Calling Support'),
-          trailing: Icon(
-            _platformInfo?.supportsToolCalling == true
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: _platformInfo?.supportsToolCalling == true
-                ? Colors.green
-                : Colors.grey,
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.camera_alt),
-          title: const Text('Multimodal / Vision Support'),
-          trailing: Icon(
-            _platformInfo?.supportsVision == true
-                ? Icons.check_circle
-                : Icons.cancel,
-            color: _platformInfo?.supportsVision == true
-                ? Colors.green
-                : Colors.grey,
-          ),
+        const SizedBox(height: 12),
+        SelectableText(_out),
+      ],
+    );
+  }
+}
+
+class ToolsTab extends StatefulWidget {
+  const ToolsTab({super.key, required this.ai});
+  final FlutterOnDeviceAi ai;
+
+  @override
+  State<ToolsTab> createState() => _ToolsTabState();
+}
+
+class _ToolsTabState extends State<ToolsTab> {
+  double _temperature = 20;
+  final _log = <String>[];
+  bool _busy = false;
+  final _input = TextEditingController(
+    text: 'It feels chilly, set the thermostat to 23 degrees.',
+  );
+
+  Future<void> _run() async {
+    setState(() {
+      _busy = true;
+      _log.clear();
+    });
+    final session = await widget.ai.createSession(
+      systemInstruction: 'You control a smart home. Use tools to act.',
+      tools: [
+        OnDeviceAiTool(
+          name: 'setThermostat',
+          description:
+              'Sets the thermostat to a target temperature in Celsius.',
+          parameters: const [
+            ToolParameter(
+              name: 'celsius',
+              type: ToolArgumentType.number,
+              description: 'Target temperature in Celsius',
+            ),
+          ],
+          onCall: (args) {
+            final c = (args['celsius'] as num).toDouble();
+            setState(() {
+              _temperature = c;
+              _log.add('tool setThermostat(celsius: $c)');
+            });
+            return {'ok': true, 'celsius': c};
+          },
         ),
       ],
     );
+    try {
+      final res = await session.ask(_input.text);
+      setState(() => _log.add('model: ${res.text}'));
+    } on OnDeviceAiException catch (e) {
+      setState(() => _log.add('${e.runtimeType}: ${e.message}'));
+    } finally {
+      await session.close();
+      setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Thermostat: ${_temperature.toStringAsFixed(1)} °C',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _input,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: _busy ? null : _run, child: const Text('Ask')),
+        const SizedBox(height: 12),
+        for (final l in _log) SelectableText(l),
+      ],
+    );
+  }
+}
+
+class ScreenTab extends StatefulWidget {
+  const ScreenTab({super.key, required this.ai});
+  final FlutterOnDeviceAi ai;
+
+  @override
+  State<ScreenTab> createState() => _ScreenTabState();
+}
+
+class _ScreenTabState extends State<ScreenTab> {
+  final _goal = TextEditingController(
+    text: 'A one week plan to prepare for a 10K run',
+  );
+  GenUiModuleSpec? _module;
+  String? _error;
+  bool _busy = false;
+
+  Future<void> _run() async {
+    setState(() {
+      _busy = true;
+      _module = null;
+      _error = null;
+    });
+    final generator = OnDeviceUiGenerator(widget.ai);
+    final module = await generator.generateModule(_goal.text);
+    setState(() {
+      _module = module;
+      _error = generator.lastError;
+      _busy = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _module;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        TextField(
+          controller: _goal,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: _busy ? null : _run,
+          child: const Text('Generate screen'),
+        ),
+        const SizedBox(height: 12),
+        if (_busy) const LinearProgressIndicator(),
+        if (_error != null) Text(_error!),
+        if (m != null) ...[
+          Text(m.title, style: Theme.of(context).textTheme.headlineSmall),
+          if (m.blurb.isNotEmpty) Text(m.blurb),
+          const SizedBox(height: 8),
+          for (final b in m.blocks) BlockView(block: b),
+        ],
+      ],
+    );
+  }
+}
+
+/// Minimal renderer for the typed blocks - replace with your own design system.
+class BlockView extends StatelessWidget {
+  const BlockView({super.key, required this.block});
+  final Map<String, dynamic> block;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    Widget card(Widget child) => Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(padding: const EdgeInsets.all(14), child: child),
+    );
+    switch (block['type']) {
+      case 'stat':
+        return card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${block['label']}', style: t.labelMedium),
+              Text('${block['value']}', style: t.headlineMedium),
+              if (block['subtext'] != null)
+                Text('${block['subtext']}', style: t.bodySmall),
+            ],
+          ),
+        );
+      case 'progress':
+        final current = (block['current'] as num).toDouble();
+        final target = (block['target'] as num).toDouble();
+        return card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${block['label']}  $current / $target ${block['unit'] ?? ''}',
+              ),
+              const SizedBox(height: 6),
+              LinearProgressIndicator(value: (current / target).clamp(0, 1)),
+            ],
+          ),
+        );
+      case 'checklist':
+        return card(
+          Column(
+            children: [
+              for (final i in block['items'] as List)
+                CheckboxListTile(
+                  dense: true,
+                  value: i['completed'] == true,
+                  onChanged: (_) {},
+                  title: Text('${i['title']}'),
+                ),
+            ],
+          ),
+        );
+      case 'list':
+        return card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (block['title'] != null)
+                Text('${block['title']}', style: t.titleSmall),
+              for (final i in block['items'] as List) Text('• $i'),
+            ],
+          ),
+        );
+      case 'steps':
+        return card(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (n, i) in (block['items'] as List).indexed)
+                Text(
+                  '${n + 1}. ${i['title']}${(i['detail'] as String).isEmpty ? '' : ' - ${i['detail']}'}',
+                ),
+            ],
+          ),
+        );
+      case 'table':
+        return card(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: [
+                for (final c in block['columns'] as List)
+                  DataColumn(label: Text('$c')),
+              ],
+              rows: [
+                for (final r in block['rows'] as List)
+                  DataRow(
+                    cells: [
+                      for (final cell in r as List) DataCell(Text('$cell')),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      default:
+        return card(Text('${block['content']}'));
+    }
   }
 }

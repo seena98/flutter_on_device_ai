@@ -1,0 +1,49 @@
+# flutter_on_device_ai
+
+> Flutter plugin for on-device generative AI. Uses the OS-managed model (Apple Foundation Models on iOS/macOS 26+, Gemini Nano via Google AICore on Android, Chrome's built-in Prompt API on web) with an optional fallback adapter (e.g. flutter_edge_ai). No model is bundled, no network, no API key.
+
+Import: `import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';`
+Test double: `import 'package:flutter_on_device_ai/testing.dart';`
+
+## Core calls
+
+```dart
+final ai = FlutterOnDeviceAi();                       // singleton; FlutterOnDeviceAi.withFallback(fallbackAdapter: ...) for a custom one
+final a = await ai.availability();                    // OnDeviceAiAvailability: status, reason (enum), message
+await FlutterOnDeviceAi.ensureReady(onProgress: (p) {}); // download model; on web only from a user gesture
+final r = await ai.generateText(prompt: '...');       // AiResponse: text, json, tokenCount, generationTimeMs
+await for (final d in ai.generateTextStream(prompt: '...')) {}  // text deltas
+final s = await ai.createSession(systemInstruction: '...', tools: [...]);
+final reply = await s.ask('...');                     // or addQuery()+getResponse()
+await for (final d in s.askStream('...')) {}
+await s.stopGeneration();                             // throws OnDeviceAiCancelledException in pending call
+await s.close();                                      // always close sessions
+```
+
+## Structured output
+`GenerationConfig(responseFormat: ResponseFormat.json, schema: {...JSON Schema...})` then `response.json`.
+Supported keywords: type, enum, properties, required, additionalProperties:false, items, minItems, maxItems, minLength, maxLength, minimum, maximum, pattern. Others throw `OnDeviceAiSchemaException`. Result is validated; invalid replies are re-asked up to `maxRepairAttempts` (default 2), then `OnDeviceAiStructuredOutputException(errors, rawText)`. Streaming with a schema yields the validated answer as one chunk.
+
+## Tools
+`OnDeviceAiTool(name, description, parameters: [ToolParameter(...)] | parameterSchema: {...}, onCall: (Map args) => Map result)`. Pass via `createSession(tools: [...])` (or `registerTools` for one-shot calls). Throw `OnDeviceAiToolException(msg)` to report an error to the model. Native on Apple, emulated (JSON protocol, validated, max `maxToolRounds`) elsewhere. `onCall` must return a JSON-encodable map.
+
+## Capabilities
+`await ai.capabilities()` -> backend, streaming, toolCalling/structuredOutput (`CapabilitySupport.native|emulated|unsupported`), imageInput, exactTokenCounts, modelDownload. Branch on this, never on the platform name.
+
+## Fallback
+`FlutterOnDeviceAi.withFallback(fallbackAdapter: EdgeAiFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))`. Adapters are stateless; the package replays the transcript ("User: ...\nAssistant: ...\nAssistant:") on each turn. Used whenever the OS model is not `available`. Windows and Linux always use it.
+
+## Errors (all extend OnDeviceAiException, field `code`)
+Unavailable, Unsupported, UserActivationRequired (web), SessionBusy, Cancelled, StructuredOutput, Schema, Generation.
+
+## Generative UI
+`OnDeviceUiGenerator().generateModule(goal, language:, principles:, tools:, onText:)` -> `GenUiModuleSpec?` (null + `lastError` on failure). Block types: stat, progress, checklist, list, steps, table, callout, note.
+
+## Pitfalls
+- A session runs one turn at a time (`OnDeviceAiSessionBusyException`); open several sessions for parallelism.
+- `isAvailable()` is true if the OS model is ready OR a fallback is ready; use `availability()` for the native state only.
+- Web: `ensureReady()` must run inside a click/tap handler.
+- Android needs minSdk 26 and Google AICore; Apple needs iOS/macOS 26+, Apple Intelligence enabled, Xcode 26+.
+- Image input: Android only (`session.supportsImages`).
+- `maxTokens` is ignored by Chrome. On-device models are small: keep prompts short and tool lists small.
+- Do not mock the plugin with method-channel stubs; use `FakeOnDeviceAiPlatform`.

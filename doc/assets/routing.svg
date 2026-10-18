@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 520" role="img" aria-labelledby="t d">
+  <title id="t">How a request is routed</title>
+  <desc id="d">Your app calls FlutterOnDeviceAi. If the operating system model is ready it answers; otherwise a configured fallback adapter answers; otherwise a typed exception is thrown. Tools and structured output are emulated in Dart when the engine lacks them.</desc>
+  <style>
+    :root { --bg:#ffffff; --box:#f1f5f9; --line:#475569; --text:#0f172a; --ok:#0f766e; --okbg:#ccfbf1; --alt:#b45309; --altbg:#fef3c7; --err:#b91c1c; --errbg:#fee2e2; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --box:#1e293b; --line:#94a3b8; --text:#f1f5f9; --ok:#5eead4; --okbg:#134e4a; --alt:#fcd34d; --altbg:#422006; --err:#fca5a5; --errbg:#450a0a; } }
+    .bg { fill: var(--bg); }
+    .box { fill: var(--box); stroke: var(--line); stroke-width: 1.5; }
+    .ok { fill: var(--okbg); stroke: var(--ok); stroke-width: 1.5; }
+    .alt { fill: var(--altbg); stroke: var(--alt); stroke-width: 1.5; }
+    .err { fill: var(--errbg); stroke: var(--err); stroke-width: 1.5; }
+    .t { font: 600 17px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: var(--text); }
+    .s { font: 400 14px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: var(--text); }
+    .l { font: 600 13px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: var(--line); }
+    .arrow { stroke: var(--line); stroke-width: 2; fill: none; marker-end: url(#a); }
+  </style>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker></defs>
+  <rect class="bg" width="1100" height="520"/>
+
+  <rect class="box" x="40" y="40" width="240" height="80" rx="12"/>
+  <text class="t" x="160" y="76" text-anchor="middle">Your app</text>
+  <text class="s" x="160" y="100" text-anchor="middle">ai.createSession()</text>
+
+  <path class="arrow" d="M280 80H340"/>
+
+  <rect class="box" x="340" y="30" width="330" height="100" rx="12"/>
+  <text class="t" x="505" y="62" text-anchor="middle">FlutterOnDeviceAi (Dart)</text>
+  <text class="s" x="505" y="86" text-anchor="middle">sessions · streaming · cancellation</text>
+  <text class="s" x="505" y="108" text-anchor="middle">tool loop · schema validate + repair</text>
+
+  <path d="M505 130V180" stroke="#64748b" stroke-width="2" fill="none"/>
+  <text class="l" x="520" y="160">is the OS model ready?</text>
+
+  <path class="arrow" d="M505 180L240 260"/>
+  <text class="l" x="340" y="212">yes</text>
+  <rect class="ok" x="40" y="260" width="400" height="150" rx="12"/>
+  <text class="t" x="240" y="292" text-anchor="middle">OS-managed model</text>
+  <text class="s" x="240" y="320" text-anchor="middle">iOS / macOS 26+: Apple Foundation Models</text>
+  <text class="s" x="240" y="344" text-anchor="middle">Android: Gemini Nano via Google AICore</text>
+  <text class="s" x="240" y="368" text-anchor="middle">Web: Chrome Prompt API</text>
+  <text class="s" x="240" y="392" text-anchor="middle">0 MB added to your app</text>
+
+  <path class="arrow" d="M505 180L660 260"/>
+  <text class="l" x="600" y="212">no</text>
+  <rect class="alt" x="520" y="260" width="280" height="110" rx="12"/>
+  <text class="t" x="660" y="292" text-anchor="middle">Fallback adapter</text>
+  <text class="s" x="660" y="318" text-anchor="middle">EdgeAiFallbackAdapter or your own</text>
+  <text class="s" x="660" y="342" text-anchor="middle">same API, same features</text>
+
+  <path class="arrow" d="M800 315H860"/>
+  <text class="l" x="806" y="300">none</text>
+  <rect class="err" x="860" y="260" width="200" height="110" rx="12"/>
+  <text class="t" x="960" y="292" text-anchor="middle">Typed exception</text>
+  <text class="s" x="960" y="318" text-anchor="middle">OnDeviceAiUnavailable</text>
+  <text class="s" x="960" y="342" text-anchor="middle">Exception + reason</text>
+
+  <text class="s" x="40" y="470">Capabilities the engine lacks (tools, JSON schema) are filled in by the Dart layer;</text>
+  <text class="s" x="40" y="494">ai.capabilities() tells you which are native, emulated or unavailable.</text>
+</svg>

@@ -1,349 +1,321 @@
 <p align="center">
-  <img src="doc/assets/hero_banner.svg" alt="flutter_on_device_ai Hero Banner" width="100%" />
+  <img src="doc/assets/hero.png" alt="flutter_on_device_ai: generative AI that ships with the device" width="100%" />
 </p>
 
 <p align="center">
-  <a href="https://github.com/seena98/flutter_on_device_ai/actions/workflows/ci.yml"><img src="https://github.com/seena98/flutter_on_device_ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://pub.dev/packages/flutter_on_device_ai"><img src="https://img.shields.io/pub/v/flutter_on_device_ai.svg?style=flat-square&color=6366F1" alt="Pub Version"></a>
-  <a href="https://pub.dev/packages/flutter_on_device_ai/score"><img src="https://img.shields.io/pub/points/flutter_on_device_ai?style=flat-square&color=10B981" alt="Pub Points"></a>
-  <a href="https://github.com/seena98/flutter_on_device_ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Platform-iOS%20%7C%20Android%20%7C%20macOS%20%7C%20Windows%20%7C%20Web%20%7C%20Linux-475569.svg?style=flat-square" alt="Platforms"></a>
+  <a href="https://pub.dev/packages/flutter_on_device_ai"><img src="https://img.shields.io/pub/v/flutter_on_device_ai.svg" alt="pub version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Web%20%7C%20Windows%20%7C%20Linux-475569.svg" alt="platforms">
 </p>
 
-<p align="center">
-  <b>A unified, production-grade Flutter plugin for running on-device Generative AI using native OS-managed accelerators with zero app-bundled checkpoints, plus seamless fallback to <a href="https://pub.dev/packages/flutter_gemma">flutter_gemma</a>.</b>
-</p>
+Your phone already contains a language model. Apple ships one with iOS and macOS 26, Google ships Gemini Nano through AICore on recent Android phones, and Chrome ships one in the browser. `flutter_on_device_ai` lets a Flutter app talk to **whichever one is present**, through a single API, and **hands over to a model you choose** (through `flutter_edge_ai`, for example) when the device has none.
 
----
+* Nothing to bundle: **0 MB** added to your app, no API key, no server, works offline.
+* One API for chat sessions, streaming, cancellation, tool calling, JSON-schema output and generated UI.
+* **A feature the engine lacks is filled in for you.** Tool calling and schema-constrained JSON work on every backend, natively where the OS supports them and through a tested Dart layer everywhere else. `capabilities()` tells you which is which.
+* **Real fallback, not a stub.** Older phone, desktop, unsupported region: the same session code runs on your fallback engine.
+* **Typed errors** that tell the user what to do (turn Apple Intelligence on, install AICore, tap to download).
+* **Test without a device** using the bundled `FakeOnDeviceAiPlatform`.
 
-## 🌟 Overview & Live Demo
+```dart
+final ai = FlutterOnDeviceAi();
 
-`flutter_on_device_ai` bridges your Flutter applications directly to **Apple Foundation Models** (iOS 26+, macOS 26+), **Google Gemini Nano** via ML Kit GenAI & AICore (Android API 26+), **Chrome Built-in Prompt API** (`window.ai`), and **Windows AI Foundry** (WinRT) — with **0 MB** added to your app binary.
-
-<p align="center">
-  <img src="doc/assets/chat_demo.svg" alt="Real-time Streaming & Tool Calling Demo" width="90%" />
-</p>
-
----
-
-## ✨ Unique Advantages
-
-| Feature | `flutter_on_device_ai` | Standard Cloud APIs (OpenAI/Cloud Gemini) | Bundled Model Checkpoints |
-| :--- | :---: | :---: | :---: |
-| **App Download Size** | 🚀 **0 MB** (OS-managed) | 🚀 0 MB | ❌ 1.5 GB – 4.0 GB |
-| **Privacy & Security** | 🔒 **100% On-Device** | ❌ Data leaves phone | 🔒 100% On-Device |
-| **Offline Reliability** | ✈️ **Works in Airplane Mode** | ❌ Fails without Wi-Fi/LTE | ✈️ Works in Airplane Mode |
-| **Inference Cost** | 💰 **$0.00 / Free Forever** | ❌ Monthly token billing | 💰 $0.00 / Free Forever |
-| **Battery & Hardware** | ⚡ **Direct NPU Acceleration** | 🔋 Server side | ⚠️ High CPU/RAM overhead |
-| **Smart Fallback Engine**| 💎 **Auto-routes to `flutter_gemma`** | ❌ None | ❌ Manual rewrite |
-
----
-
-## 🏗️ Architecture & Platform Engines
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   flutter_on_device_ai (Public API)                    │
-│   • One-Shot Facade (generateText, stream, genUI)                      │
-│   • Stateful Session API (Multi-turn, Tool Calls, Cancellation)        │
-│   • Smart Fallback Engine (Seamless flutter_gemma integration)         │
-│   • Capabilities & Diagnostic Doctor (Token Count, Hardware Probe)     │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-               flutter_on_device_ai_platform_interface
-        ┌───────────────────┬───────┴───────────┬───────────────────┐
-        ▼                   ▼                   ▼                   ▼
-   [ Android ]         [ Apple ]            [ Windows ]       [ Web (Chrome) ]
-• ML Kit GenAI /     • Foundation Models   • Windows AI      • Prompt API
-  Gemini Nano          (iOS/macOS 26+)       Foundry (WinRT)   (`window.ai`)
-• AICore Resolver    • Tool Calling &      • Structured      • AbortController
-  & Model Downloader   JSON Schema           JSON Output     • Streams & Quotas
-        │                   │                   │                   │
-        └───────────────────┼───────────────────┴───────────────────┘
-                            ▼
-              [ Pluggable Fallback Engine ]
-        • flutter_gemma (MediaPipe / LiteRT-LM)
-        • Bundled or dynamic downloaded models for older OSes (iOS < 26, older Android)
+if (await ai.isAvailable()) {
+  final reply = await ai.generateText(prompt: 'Name three uses for a paperclip.');
+  print(reply.text);
+}
 ```
 
----
+## Contents
 
-## 📊 Platform Support Matrix
+[Install](#install) · [Pick an engine](#how-a-request-finds-its-engine) · [What works where](#what-works-where) · [Guide](#guide) · [Platform setup](#platform-setup) · [Errors](#errors) · [Testing](#testing-your-app) · [API map](#api-map) · [Limits](#known-limits) · [AI agents](#for-ai-coding-agents)
 
-| Feature | iOS / macOS (26+) | Android (API 26+) | Windows (11 25H2+) | Web (Chromium) | Linux / Older OS Fallback |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Text Generation** | ✅ Native Apple ANE | ✅ Gemini Nano | ✅ WinRT LanguageModel | ✅ `window.ai` | ✅ `flutter_gemma` |
-| **Streaming Output** | ✅ Streamed Snapshots | ✅ StreamingCallback | ✅ Async WinRT | ✅ ReadableStream | ✅ Token Stream |
-| **Structured Output**| ✅ Schema Enforced | ⚠️ Compile-time/Dart | ✅ Native WinRT JSON | ✅ `responseConstraint` | ✅ JSON Mode |
-| **Tool Calling** | ✅ Bidirectional Dart | ⚠️ Dart Mediated | ⚠️ Emulated | ⚠️ Experimental | ✅ Dart Handlers |
-| **Multi-turn Sessions**| ✅ Native | ✅ Native | ✅ Native | ✅ Native Quota | ✅ Stateful Transcript |
-| **Generative UI (genUI)**| ✅ Typed Blocks | ✅ Typed Blocks | ✅ Typed Blocks | ✅ Typed Blocks | ✅ Typed Blocks |
-| **Model Downloads** | ✅ OS-managed | ✅ Download Stream | ✅ System-managed | ✅ Browser Gesture | ✅ Model Downloader |
-| **Token Counter** | ✅ OS 26.4+ Native | ✅ Native | ⚠️ Fast Estimator | ✅ `measureUsage` | ✅ Exact Tokenizer |
-| **Cancellation** | ✅ AbortController | ✅ Cancellable | ✅ WinRT Cancel | ✅ AbortSignal | ✅ CancellationToken |
+## Install
 
----
-
-## 📦 Installation
-
-Add `flutter_on_device_ai` to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  flutter_on_device_ai: ^0.0.1
-```
-
-Or run:
-
-```bash
+```sh
 flutter pub add flutter_on_device_ai
 ```
 
----
+Requires Flutter 3.32+ (Dart 3.8+). Platform prerequisites are in [Platform setup](#platform-setup).
 
-## 🚀 Quickstart Guide
+## How a request finds its engine
 
-### 1. Basic Generation (One-Shot)
+<p align="center"><img src="doc/assets/routing.png" alt="Routing: OS model if ready, else fallback adapter, else a typed exception" width="92%" /></p>
 
-```dart
-import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
+The decision is made per session, at the moment you create it, so a model that finishes downloading is picked up on the next session without restarting anything.
 
-final ai = FlutterOnDeviceAi();
+## What works where
 
-// Check device readiness
-if (!await ai.isAvailable()) {
-  print(await ai.availabilityReason());
-  return;
-}
+`native` means the OS does it. `emulated` means this package does it on top of plain text generation, and it behaves the same everywhere. Ask the running device with `await ai.capabilities()` instead of testing for a platform name.
 
-// Generate text
-final response = await ai.generateText(
-  prompt: 'Explain quantum computing in two clear sentences.',
-  config: const GenerationConfig(maxTokens: 200, temperature: 0.7),
-);
+| | Apple (iOS / macOS 26+) | Android (API 26+) | Web (Chrome / Edge) | Fallback adapter | Windows / Linux |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Text, streaming, cancel | native | native | native | via adapter | fallback only |
+| Multi-turn sessions | native | kept in Dart | native | kept in Dart | fallback only |
+| JSON-schema output | native | emulated, validated, auto-repaired | native | emulated | fallback only |
+| Tool calling | native | emulated | emulated | emulated | fallback only |
+| Image input | not yet | native | not yet | no | no |
+| Token counting | estimate | exact | exact | estimate | estimate |
+| Model download progress | OS-managed | yes | yes (needs a gesture) | your runner | your runner |
 
-print(response.text);
-print('Latency: ${response.generationTimeMs}ms');
-print('Tokens: ${response.tokenCount}');
-```
+**Windows and Linux** have no OS-managed model this package can call, so they report `unavailable` and route to your fallback adapter. Native Windows AI support is on the roadmap.
 
----
+> **Verification status.** The Dart layer is covered by unit tests, the web layer runs against a real browser engine with a stubbed `LanguageModel`, and the iOS, macOS and Android native code compiles against the real SDKs. Inference on a real Apple Intelligence or Gemini Nano device is exercised by `example/integration_test`, which you should run on your target hardware (see [Testing](#testing-your-app)).
 
-### 2. Live Token Streaming
+## Guide
 
-Stream decoded tokens live into your user interface as they decode:
-
-```dart
-final stream = ai.generateTextStream(
-  prompt: 'Write an inspiring 3-line poem about space exploration.',
-);
-
-await for (final token in stream) {
-  stdout.write(token);
-}
-```
-
----
-
-### 3. Stateful Multi-Turn Conversations
-
-Preserve conversation transcripts across turns using `OnDeviceAiSession`:
+### Sessions: conversations with memory
 
 ```dart
 final session = await ai.createSession(
-  systemInstruction: 'You are an intelligent code tutor. Be concise.',
+  systemInstruction: 'You are a patient Dart tutor. Keep answers short.',
 );
 
-// Turn 1
-await session.addQuery('What is the difference between const and final in Dart?');
-final reply1 = await session.getResponse();
-print(reply1.text);
+final first = await session.ask('What does `late` do?');
+print(first.text);
 
-// Turn 2 (retains full chat context)
-await session.addQuery('Can you give a code snippet illustrating this?');
-await for (final chunk in session.getResponseAsync()) {
-  stdout.write(chunk);
-}
+final second = await session.ask('Show an example.'); // remembers the first turn
+print(second.text);
 
-// Measure token count inside this session
-final count = await session.countTokens();
-print('Active context tokens: $count');
-
-// Release native OS memory
+print(await session.countTokens());
 await session.close();
 ```
 
----
+Open as many sessions as you like; they are isolated. A session answers one turn at a time and throws `OnDeviceAiSessionBusyException` if you touch it mid-generation.
 
-### 4. Schema-Constrained Structured Outputs (JSON Mode)
-
-Force the on-device model to output strictly valid JSON conforming to your JSON Schema:
+A turn can be assembled from several parts before you ask for the answer:
 
 ```dart
-final response = await ai.generateText(
-  prompt: 'Extract profile from: "Elena Rostova, Principal Engineer, 9 years in ML & Systems"',
+await session.addQuery('Summarise this article:');
+await session.addQuery(articleText);
+final summary = await session.getResponse(config: const GenerationConfig(maxTokens: 200));
+```
+
+### Streaming and cancelling
+
+```dart
+final session = await ai.createSession();
+
+final subscription = session.askStream('Write a long story.').listen(
+  (delta) => setState(() => story += delta),
+  onError: (e) => debugPrint('$e'),
+);
+
+// later, from a "Stop" button:
+await session.stopGeneration();   // pending futures/streams fail with OnDeviceAiCancelledException
+```
+
+Cancelling is real: it stops the native generation, it does not just ignore the output.
+
+### Structured output
+
+Describe the shape you want with a JSON Schema. You always get either a value that satisfies it or an `OnDeviceAiStructuredOutputException`.
+
+```dart
+final res = await ai.generateText(
+  prompt: 'Extract the person: "Ada Lovelace, mathematician, 36"',
   config: const GenerationConfig(
     responseFormat: ResponseFormat.json,
     schema: {
       'type': 'object',
       'properties': {
-        'fullName': {'type': 'string'},
-        'role': {'type': 'string'},
-        'yearsExperience': {'type': 'integer'},
-        'specialties': {
-          'type': 'array',
-          'items': {'type': 'string'},
-        },
+        'name': {'type': 'string'},
+        'age': {'type': 'integer', 'minimum': 0},
       },
-      'required': ['fullName', 'role', 'specialties'],
+      'required': ['name', 'age'],
     },
   ),
 );
 
-// Direct access to decoded typed map:
-final data = response.json;
-print(data?['fullName']); // "Elena Rostova"
-print(data?['role']);     // "Principal Engineer"
+print(res.json!['age']); // 36
 ```
 
----
+Where the OS enforces the schema (Apple, Chrome) it is used directly. Everywhere else the package asks for JSON, extracts it from the reply (fences, chatter and truncated output included), validates it against your schema and, if it does not fit, **tells the model what was wrong and asks again** (`GenerationConfig.maxRepairAttempts`, default 2).
 
-### 5. Native Dart Tool Calling (Function Calling)
+Supported schema keywords: `type` (object, array, string, integer, number, boolean, null), `enum`, `properties`, `required`, `additionalProperties: false`, `items`, `minItems`/`maxItems`, `minLength`/`maxLength`, `minimum`/`maximum`, `pattern`. Anything else fails fast with `OnDeviceAiSchemaException`, before any model runs.
 
-Give the on-device model tools that trigger native Dart functions:
+With a schema, streaming delivers the validated answer as one chunk.
+
+### Tools: let the model call your Dart code
 
 ```dart
-await ai.registerTools([
-  OnDeviceAiTool(
-    name: 'adjustRoomTemperature',
-    description: 'Sets the smart thermostat temperature in Celsius.',
-    parameters: const [
-      ToolParameter(
-        name: 'temperature',
-        type: ToolArgumentType.number,
-        description: 'Target temperature in Celsius (e.g. 21.5)',
-      ),
-      ToolParameter(
-        name: 'room',
-        type: ToolArgumentType.string,
-        description: 'Room name (e.g. bedroom, living_room)',
-        optional: true,
-      ),
-    ],
-    onCall: (arguments) async {
-      final temp = arguments['temperature'] as num;
-      final room = arguments['room'] ?? 'living_room';
-      
-      // Perform hardware / API action in Flutter
-      await SmartHomeClient.setTemperature(room: room, temp: temp.toDouble());
-      
-      return {'status': 'success', 'room': room, 'appliedTemp': temp};
-    },
-  ),
-]);
-
-// Prompting will autonomously trigger your Dart callback:
-final reply = await ai.generateText(
-  prompt: 'It is too chilly in the living room, please set it to 22 degrees.',
+final session = await ai.createSession(
+  systemInstruction: 'You control a smart home.',
+  tools: [
+    OnDeviceAiTool(
+      name: 'setThermostat',
+      description: 'Sets the target temperature in Celsius.',
+      parameters: const [
+        ToolParameter(name: 'celsius', type: ToolArgumentType.number, description: 'Target in °C'),
+        ToolParameter(name: 'room', type: ToolArgumentType.string, description: 'Room name', optional: true),
+      ],
+      onCall: (args) async {
+        await home.setTemperature(args['celsius'] as num, room: args['room'] as String?);
+        return {'ok': true};
+      },
+    ),
+  ],
 );
-print(reply.text);
+
+final reply = await session.ask('It is chilly, warm the living room to 22.');
 ```
 
----
+* Nested or constrained arguments: pass `parameterSchema:` (a JSON Schema) instead of `parameters:`.
+* Refuse or report a problem by throwing `OnDeviceAiToolException('Door is locked')`. The message goes back to the model as data so it can recover or explain.
+* On Apple the OS calls your tool natively. Elsewhere the package teaches the model a small JSON protocol, validates the arguments against your schema, runs your function and feeds the result back, for up to `maxToolRounds` round trips. The loop also works while streaming.
+* Small on-device models are less reliable at deciding *when* to call a tool than large cloud models. Keep descriptions specific and the tool list short.
 
-### 6. Smart Fallback with `flutter_gemma`
+### Fallback: keep working on devices with no OS model
 
-On older phones (iOS 15–18 or Android phones without Google AICore), connect `GemmaFallbackAdapter`. Your code runs without modification everywhere:
+Give the facade an adapter and everything above (sessions, streaming, tools, schemas) runs on it whenever the OS model is not ready.
 
 ```dart
 final ai = FlutterOnDeviceAi.withFallback(
-  fallbackAdapter: GemmaFallbackAdapter(
-    modelPath: 'assets/models/gemma-2b-it.bin',
+  fallbackAdapter: EdgeAiFallbackAdapter(
+    modelName: 'Edge AI',
+    isModelReady: () async => model != null,
     onGenerateText: (prompt, {config, instructions}) async {
-      // Route through your flutter_gemma runner
-      return await gemmaModel.generate(prompt);
-    },
-    onGenerateStream: (prompt, {config, instructions}) {
-      return gemmaModel.generateStream(prompt);
+      final chat = await model!.createChat();
+      await chat.addQueryChunk(Message.text(
+        text: [if (instructions != null) instructions, prompt].join('\n\n'),
+        isUser: true,
+      ));
+      final out = StringBuffer();
+      await for (final r in chat.generateChatResponseAsync()) {
+        if (r is TextResponse) out.write(r.token);
+      }
+      return out.toString();
     },
   ),
 );
-
-// Modern iPhone/Android -> Uses Apple Intelligence / Gemini Nano
-// Older iPhone/Android -> Seamlessly executes via flutter_gemma!
-final response = await ai.generateText(prompt: 'Hello world');
 ```
 
----
+`EdgeAiFallbackAdapter` is deliberately runner-agnostic: it takes your loaded model through callbacks, so *you* decide which model file to download and when, and the package adds no heavy dependency. `model` above is what `FlutterEdgeAi.getActiveModel()` returns in [`flutter_edge_ai`](https://pub.dev/packages/flutter_edge_ai); the snippet follows that package's documented `Message` / `generateChatResponseAsync` API. Adapt the body to whichever runner you use. The adapter is stateless: the package keeps the conversation and sends the rendered transcript on each turn.
 
-### 7. Generative UI (`genui` Integration)
+Need another engine? Implement `OnDeviceAiFallbackAdapter` (four methods).
 
-Turn natural language goals into renderable typed-block modules:
+### Readiness, download and guidance
+
+```dart
+final state = await ai.availability();      // status + reason + a sentence for your UI
+switch (state.reason) {
+  case AvailabilityReason.ready:                 break;
+  case AvailabilityReason.featureDisabled:       showHint('Turn on Apple Intelligence in Settings.');
+  case AvailabilityReason.systemComponentMissing: await ai.openAICorePlayStore();
+  case AvailabilityReason.modelNotReady:         await FlutterOnDeviceAi.ensureReady(onProgress: showProgress);
+  default:                                       showHint(state.message);
+}
+```
+
+`ensureReady` downloads the model when the platform allows it and reports progress from 0 to 1. **On the web call it from a click or tap**, otherwise the browser refuses and you get `OnDeviceAiUserActivationRequiredException`.
+
+### Generated UI
+
+Turn a goal into a typed, validated screen description and render it with your own widgets.
 
 ```dart
 final generator = OnDeviceUiGenerator();
-final GenUiModuleSpec? spec = await generator.generateModule(
-  'Create a 10K running prep tracker for this weekend',
+final module = await generator.generateModule(
+  'A one-week plan to get ready for a 10K',
+  language: 'English',
+  principles: 'Calm, minimal, encouraging.',
 );
 
-if (spec != null) {
-  print(spec.title); // "10K Running Prep"
-  print(spec.blocks); // [{"type": "stat", ...}, {"type": "progress", ...}]
-  
-  // Directly feed A2UI surfaces or genui renderers:
-  final componentMaps = spec.toComponentMaps();
+if (module == null) {
+  showHint(generator.lastError!);
+} else {
+  for (final block in module.blocks) { /* switch on block['type'] */ }
 }
 ```
 
----
+Block types: `stat`, `progress`, `checklist`, `list`, `steps`, `table`, `callout`, `note`. Blocks the model gets wrong are dropped, missing numbers get safe defaults, truncated JSON is repaired, and you only ever see blocks that are renderable. `module.toComponentMaps()` gives `{id, type, properties}` maps for component-based renderers. `GenUiBlockTypes.moduleSchema` and `OnDeviceUiGenerator.genUiInstructions` are public if you want to drive another engine. Pass `tools:` to let the model fetch data while it designs. The example app contains a complete block renderer.
 
-## 🛠️ Platform Setup Guides
+## Platform setup
 
-### 🤖 Android Setup
-1. Requires Flutter 3.3.0+ and `minSdk = 26`.
-2. Hardware compatibility: Google AICore must be installed. Compatible with Google Pixel 8+, Samsung Galaxy S24+, Xiaomi 14+, OnePlus 12+, and newer devices.
-3. Handle AICore error code `-101` with one line:
+**Apple (iOS, macOS)**
+The plugin builds down to iOS 13 / macOS 10.15 and reports `unavailable` on anything older than 26. Inference needs **iOS or macOS 26+**, a device that supports Apple Intelligence, Apple Intelligence switched on in Settings, and **Xcode 26+** to build. Image input and exact token counts need newer SDKs and are not enabled yet.
+
+**Android**
+`minSdk 26`. Needs a device with Google AICore and Gemini Nano support (for example recent Pixel and Galaxy flagships). If AICore is missing, `availability().reason` is `systemComponentMissing`; call `openAICorePlayStore()`. If the model is not yet on the device, `ensureReady()` downloads it. The ML Kit GenAI Prompt API dependency (`com.google.mlkit:genai-prompt`) is added by the plugin; do not pin an older version.
+
+**Web**
+Desktop Chrome or Edge with the built-in Prompt API available (enable `chrome://flags/#prompt-api-for-gemini-nano` where it is not on by default). The first download needs a user gesture and several GB of disk. No build configuration needed.
+
+**Windows, Linux**
+No OS model is called yet. Provide a `fallbackAdapter`.
+
+## Errors
+
+Everything extends `OnDeviceAiException` and carries a stable `code`.
+
+| Exception | Code | When |
+|---|---|---|
+| `OnDeviceAiUnavailableException` | `UNAVAILABLE` | No usable model and no fallback |
+| `OnDeviceAiUnsupportedException` | `UNSUPPORTED` | Feature not offered (e.g. images on this backend) |
+| `OnDeviceAiUserActivationRequiredException` | `USER_ACTIVATION_REQUIRED` | Web download outside a gesture |
+| `OnDeviceAiSessionBusyException` | `SESSION_BUSY` | Session touched while generating |
+| `OnDeviceAiCancelledException` | `CANCELLED` | `stopGeneration()` or a cancelled stream |
+| `OnDeviceAiStructuredOutputException` | `STRUCTURED_OUTPUT_INVALID` | Schema not satisfied after repairs (`errors`, `rawText`) |
+| `OnDeviceAiSchemaException` | `INVALID_SCHEMA` | Unsupported schema construct |
+| `OnDeviceAiGenerationException` | `GENERATION_FAILED` | The engine failed |
+
+## Testing your app
+
+Swap in the in-memory platform. It keeps real session state, streams words as chunks and honours cancellation.
+
 ```dart
-if (await ai.getModelStatus() == ModelFeatureStatus.downloadable) {
-  await ai.openAICorePlayStore(); // Deep links directly to Google AICore
-}
+import 'package:flutter_on_device_ai/testing.dart';
+
+setUp(() {
+  FlutterOnDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
+    responder: (prompt, transcript) => 'Echo: $prompt',
+    // availability: ..., info: ... to simulate other devices
+  );
+});
 ```
 
-### 🍎 Apple Setup (iOS & macOS)
-1. Deployment floor: Compatible down to **iOS 13.0** and **macOS 12.0** (gracefully reports unavailable or uses `flutter_gemma`).
-2. Native inference floor: Requires **iOS 26.0+** or **macOS 26.0+** with Apple Intelligence enabled on Apple Silicon (M1+ or A17 Pro+).
-3. Build with Xcode 26+.
+To check the *real* model on your hardware, run the bundled integration test on a device that has one. It skips itself, with a printed reason, on devices that do not:
 
-### 🪟 Windows Setup
-1. Requires Windows 11 (25H2, build 26200.7309+) on a Copilot+ PC (NPU) or qualifying NVIDIA RTX / AMD Radeon GPU.
-2. Built with the Windows App SDK WinRT projection.
-
-### 🌐 Web (Chrome Prompt API) Setup
-1. Run inside Chromium (Chrome Canary, Dev, or Edge) with:
-   `chrome://flags/#prompt-api-for-gemini-nano` set to **Enabled**.
-2. Requires user gesture for initial model download. Call `FlutterOnDeviceAi.ensureReady()` from a button click.
-
----
-
-## 🩺 Diagnostic Doctor
-
-Inspect hardware, download readiness, and backend capabilities at runtime:
-
-```dart
-final info = await ai.getPlatformInfo();
-print('Active Backend: ${info.backend.name}');
-print('Supports Tools: ${info.supportsToolCalling}');
-print('Supports JSON:  ${info.supportsStructuredOutput}');
-print('Supports Vision:${info.supportsVision}');
-
-// Await preparation progress:
-await FlutterOnDeviceAi.ensureReady(
-  onProgress: (p) => print('Model downloading: ${(p * 100).toInt()}%'),
-);
+```sh
+cd example
+flutter test integration_test -d <device-id>
 ```
 
----
+## API map
 
-## 📄 License
+| You want to | Use |
+|---|---|
+| One question, one answer | `ai.generateText`, `ai.generateTextSimple` |
+| Stream an answer | `ai.generateTextStream`, `session.askStream` |
+| A conversation | `ai.createSession` → `ask`, `addQuery`, `addImage`, `getResponse`, `getResponseAsync`, `countTokens`, `stopGeneration`, `close` |
+| Check readiness | `ai.availability`, `ai.isAvailable`, `ai.capabilities`, `ai.getPlatformInfo` |
+| Prepare the model | `FlutterOnDeviceAi.ensureReady`, `ai.prepare`, `ai.downloadModel`, `ai.openAICorePlayStore` |
+| Tune generation | `GenerationConfig` (`maxTokens`, `temperature`, `topP`, `topK`, `responseFormat`, `schema`, `maxRepairAttempts`) |
+| Let the model act | `OnDeviceAiTool`, `ToolParameter`, `OnDeviceAiToolException` |
+| Run on other engines | `OnDeviceAiFallbackAdapter`, `EdgeAiFallbackAdapter` |
+| Build screens | `OnDeviceUiGenerator`, `GenUiModuleSpec`, `GenUiBlockTypes` |
+| Parse model output yourself | `JsonSchema.validate`, `JsonExtractor.extract` |
+| Test | `package:flutter_on_device_ai/testing.dart` |
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+Full API docs are on [pub.dev](https://pub.dev/documentation/flutter_on_device_ai/latest/).
+
+## Known limits
+
+* On-device models are small. Expect shorter context windows, simpler reasoning and occasional tool-calling misses compared with cloud models. Design prompts accordingly.
+* `maxTokens` is honoured on Apple and Android; Chrome's Prompt API has no such limit and ignores it.
+* Android's Prompt API is stateless, so long conversations are re-sent every turn and count against the model's context window.
+* Chrome fixes sampling parameters when a session's model is created, so `temperature`/`topK` apply from the session's first turn.
+* Image input works on Android only for now; Apple's image input needs an SDK that is not yet enabled here.
+* Windows AI Foundry (Phi Silica) is not implemented yet.
+
+## For AI coding agents
+
+If you are an LLM or an agent working with this package, read [`llms.txt`](llms.txt) (usage and pitfalls) or [`AGENTS.md`](AGENTS.md) (repository guide for contributors).
+
+## Contributing
+
+Issues and pull requests are welcome. Run `flutter analyze`, `flutter test` and `flutter test --platform chrome test/web_test.dart` before opening a PR; see [`AGENTS.md`](AGENTS.md) for the architecture and the rules that keep the native layers honest.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

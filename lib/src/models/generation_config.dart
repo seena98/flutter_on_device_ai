@@ -27,6 +27,10 @@ class GenerationConfig {
   /// JSON Schema definition to constrain the output when [responseFormat] is [ResponseFormat.json].
   final Map<String, dynamic>? schema;
 
+  /// How often the package re-asks the model when its JSON does not satisfy
+  /// [schema] and the backend cannot enforce the schema itself.
+  final int maxRepairAttempts;
+
   const GenerationConfig({
     this.maxTokens = 256,
     this.temperature,
@@ -34,6 +38,7 @@ class GenerationConfig {
     this.topK,
     this.responseFormat = ResponseFormat.text,
     this.schema,
+    this.maxRepairAttempts = 2,
   });
 
   /// Serializes the configuration to a map for platform channels.
@@ -59,7 +64,31 @@ class GenerationConfig {
         (e) => e.name == map['responseFormat'],
         orElse: () => ResponseFormat.text,
       ),
-      schema: map['schema'] as Map<String, dynamic>?,
+      schema: map['schema'] == null
+          ? null
+          : Map<String, dynamic>.from(map['schema'] as Map),
+      maxRepairAttempts: map['maxRepairAttempts'] as int? ?? 2,
+    );
+  }
+
+  /// Returns a copy with the given fields replaced.
+  GenerationConfig copyWith({
+    int? maxTokens,
+    double? temperature,
+    double? topP,
+    int? topK,
+    ResponseFormat? responseFormat,
+    Map<String, dynamic>? schema,
+    int? maxRepairAttempts,
+  }) {
+    return GenerationConfig(
+      maxTokens: maxTokens ?? this.maxTokens,
+      temperature: temperature ?? this.temperature,
+      topP: topP ?? this.topP,
+      topK: topK ?? this.topK,
+      responseFormat: responseFormat ?? this.responseFormat,
+      schema: schema ?? this.schema,
+      maxRepairAttempts: maxRepairAttempts ?? this.maxRepairAttempts,
     );
   }
 }

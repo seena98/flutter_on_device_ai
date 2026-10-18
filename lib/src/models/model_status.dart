@@ -1,33 +1,98 @@
 /// Readiness state of the on-device AI model assets.
 enum ModelFeatureStatus {
-  /// The model is fully installed, loaded, and ready for inference.
+  /// Installed and ready for inference.
   available,
 
-  /// The model is supported on this device but must be downloaded by the OS.
+  /// Supported, but the OS / browser must download it first.
   downloadable,
 
-  /// Model assets are currently being downloaded in the background.
+  /// Currently downloading.
   downloading,
 
-  /// The model cannot run on this device due to hardware or OS limitations.
+  /// Cannot run on this device.
   unavailable,
 }
 
-/// Download progress update when fetching on-device model weights.
+/// Why a model is (not) available. Lets apps show targeted guidance.
+enum AvailabilityReason {
+  /// Everything is fine.
+  ready,
+
+  /// Hardware cannot run the model.
+  deviceNotEligible,
+
+  /// The OS version is too old.
+  osTooOld,
+
+  /// The user has the AI feature switched off (e.g. Apple Intelligence).
+  featureDisabled,
+
+  /// Google AICore (or an equivalent system component) is missing.
+  systemComponentMissing,
+
+  /// The model must be downloaded or is still being prepared.
+  modelNotReady,
+
+  /// The browser does not expose the Prompt API.
+  browserUnsupported,
+
+  /// This package has no native backend for the platform.
+  platformUnsupported,
+
+  /// Anything else; see [OnDeviceAiAvailability.message].
+  unknown,
+}
+
+/// Detailed availability of the native model.
+class OnDeviceAiAvailability {
+  final ModelFeatureStatus status;
+  final AvailabilityReason reason;
+
+  /// Human readable explanation, safe to show in the UI.
+  final String message;
+
+  const OnDeviceAiAvailability({
+    required this.status,
+    required this.reason,
+    required this.message,
+  });
+
+  /// Whether inference can start immediately.
+  bool get isReady => status == ModelFeatureStatus.available;
+
+  factory OnDeviceAiAvailability.fromMap(Map<String, dynamic> map) {
+    return OnDeviceAiAvailability(
+      status: ModelFeatureStatus.values.firstWhere(
+        (s) => s.name == map['status'],
+        orElse: () => ModelFeatureStatus.unavailable,
+      ),
+      reason: AvailabilityReason.values.firstWhere(
+        (r) => r.name == map['reason'],
+        orElse: () => AvailabilityReason.unknown,
+      ),
+      message: map['message'] as String? ?? 'Unknown availability state.',
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'status': status.name,
+    'reason': reason.name,
+    'message': message,
+  };
+
+  @override
+  String toString() =>
+      'OnDeviceAiAvailability(${status.name}, ${reason.name}: $message)';
+}
+
+/// Progress update while an OS-managed model downloads.
 class ModelDownloadStatus {
-  /// Current status phase.
   final ModelFeatureStatus status;
 
-  /// Progress fraction from 0.0 to 1.0 (or null if indeterminate).
+  /// 0.0 – 1.0, or null when indeterminate.
   final double? progress;
-
-  /// Total bytes downloaded so far, if known.
   final int? bytesDownloaded;
-
-  /// Total bytes expected, if known.
   final int? totalBytes;
-
-  /// Human-readable error message if download failed.
   final String? errorMessage;
 
   const ModelDownloadStatus({
@@ -38,24 +103,22 @@ class ModelDownloadStatus {
     this.errorMessage,
   });
 
-  /// Factory from platform channel map.
   factory ModelDownloadStatus.fromMap(Map<String, dynamic> map) {
-    final statusStr = map['status'] as String? ?? 'unavailable';
-    final status = ModelFeatureStatus.values.firstWhere(
-      (s) => s.name == statusStr,
-      orElse: () => ModelFeatureStatus.unavailable,
-    );
-
     return ModelDownloadStatus(
-      status: status,
+      status: ModelFeatureStatus.values.firstWhere(
+        (s) => s.name == map['status'],
+        orElse: () => ModelFeatureStatus.unavailable,
+      ),
       progress: (map['progress'] as num?)?.toDouble(),
-      bytesDownloaded: map['bytesDownloaded'] as int?,
-      totalBytes: map['totalBytes'] as int?,
+      bytesDownloaded: (map['bytesDownloaded'] as num?)?.toInt(),
+      totalBytes: (map['totalBytes'] as num?)?.toInt(),
       errorMessage: map['errorMessage'] as String?,
     );
   }
 
   @override
   String toString() =>
-      'ModelDownloadStatus(status: ${status.name}, progress: ${(progress != null ? (progress! * 100).toStringAsFixed(1) : "?")}%${errorMessage != null ? ", error: $errorMessage" : ""})';
+      'ModelDownloadStatus(${status.name}, '
+      '${progress == null ? "?" : "${(progress! * 100).toStringAsFixed(1)}%"}'
+      '${errorMessage != null ? ", error: $errorMessage" : ""})';
 }

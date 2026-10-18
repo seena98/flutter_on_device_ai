@@ -1,4 +1,4 @@
-name: CI/CD Multi-Platform Build & Test
+name: CI
 
 on:
   push:
@@ -30,6 +30,9 @@ jobs:
 
       - name: Run root unit tests
         run: flutter test test/
+
+      - name: Run web backend tests (real browser engine)
+        run: flutter test --platform chrome test/web_test.dart
 
       - name: Run example widget tests
         run: |

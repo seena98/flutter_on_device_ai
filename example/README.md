@@ -1,17 +1,15 @@
-# flutter_on_device_ai_example
+# flutter_on_device_ai example
 
-Demonstrates how to use the flutter_on_device_ai plugin.
+A small app that exercises every feature of the plugin against whatever model the device has: streaming chat with a stop button, JSON-schema extraction, tool calling, and generated screens.
 
-## Getting Started
+```sh
+flutter run -d <device>
+```
 
-This project is a starting point for a Flutter application.
+On a machine without an OS model the status bar explains why. A switch enables a clearly labelled **demo engine** (canned echo, not an AI) so you can still see the UI.
 
-A few resources to get you started if this is your first Flutter project:
+Check the real model on a capable device:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+flutter test integration_test -d <device>
+```
