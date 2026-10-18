@@ -51,7 +51,8 @@ Real-model check (needs a capable device): `cd example && flutter test integrati
 ## Publishing
 `flutter pub publish --dry-run` must report 0 warnings. Bump `pubspec.yaml`, both podspecs and `CHANGELOG.md` together.
 
-## Recording a demo GIF (do this on real hardware, never fake it)
+## Demo GIF
+`doc/assets/demo.gif` is a labelled *scripted* demo (see `doc/demo.md`). Never present it as a device capture. To make a real-device capture instead:
 * iOS simulator / device: `xcrun simctl io booted recordVideo demo.mov` (simulators have no Apple Intelligence model; use a real iPhone 15 Pro+ with iOS 26 and QuickTime/`xcrun devicectl`).
 * Android: `adb shell screenrecord /sdcard/demo.mp4 && adb pull /sdcard/demo.mp4` on a Gemini Nano device.
 * Convert: `ffmpeg -i demo.mp4 -vf "fps=12,scale=360:-1" -loop 0 doc/assets/demo.gif` (or `gifski`). Keep it under ~5 MB and reference it from the README.

@@ -26,6 +26,12 @@ if (await ai.isAvailable()) {
 }
 ```
 
+<p align="center">
+  <img src="doc/assets/demo.gif" alt="The example app: streaming chat, JSON extraction, tool calling and a generated screen" width="300" />
+  <br />
+  <sub><b>Illustrative demo.</b> This is the real example app and the real library code (streaming, schema validation, tool loop, generated UI). The model's replies are pre-written and fed in through <code>FakeOnDeviceAiPlatform</code>, so it shows the behaviour, not a device capture or real model speed. Regenerate with <code>doc/demo.md</code>.</sub>
+</p>
+
 ## Contents
 
 [Install](#install) · [Pick an engine](#how-a-request-finds-its-engine) · [What works where](#what-works-where) · [Guide](#guide) · [Platform setup](#platform-setup) · [Errors](#errors) · [Testing](#testing-your-app) · [API map](#api-map) · [Limits](#known-limits) · [AI agents](#for-ai-coding-agents)
