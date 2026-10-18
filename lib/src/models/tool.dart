@@ -1,12 +1,7 @@
 import 'dart:async';
 
 /// Supported scalar argument types for tool parameters.
-enum ToolArgumentType {
-  string,
-  integer,
-  number,
-  boolean,
-}
+enum ToolArgumentType { string, integer, number, boolean }
 
 /// Defines a single scalar parameter in a tool definition.
 class ToolParameter {
@@ -41,9 +36,8 @@ class ToolParameter {
 }
 
 /// Callback signature invoked when an on-device model requests a tool execution.
-typedef ToolCallHandler = FutureOr<Map<String, dynamic>> Function(
-  Map<String, dynamic> arguments,
-);
+typedef ToolCallHandler =
+    FutureOr<Map<String, dynamic>> Function(Map<String, dynamic> arguments);
 
 /// A Dart-defined tool that the on-device AI model can invoke natively.
 class OnDeviceAiTool {
@@ -72,7 +66,9 @@ class OnDeviceAiTool {
     required this.onCall,
   }) {
     if (parameters != null && parameterSchema != null) {
-      throw ArgumentError('Supply either parameters or parameterSchema, never both.');
+      throw ArgumentError(
+        'Supply either parameters or parameterSchema, never both.',
+      );
     }
   }
 

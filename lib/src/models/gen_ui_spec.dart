@@ -35,11 +35,7 @@ class GenUiModuleSpec {
       final block = blocks[i];
       final type = block['type'] as String? ?? 'card';
       final props = Map<String, dynamic>.from(block)..remove('type');
-      components.add({
-        'id': 'block_$i',
-        'type': type,
-        'properties': props,
-      });
+      components.add({'id': 'block_$i', 'type': type, 'properties': props});
     }
     return components;
   }
@@ -100,11 +96,15 @@ Output schema:
     if (text.contains('```json')) {
       final start = text.indexOf('```json') + 7;
       final end = text.indexOf('```', start);
-      text = end != -1 ? text.substring(start, end).trim() : text.substring(start).trim();
+      text = end != -1
+          ? text.substring(start, end).trim()
+          : text.substring(start).trim();
     } else if (text.contains('```')) {
       final start = text.indexOf('```') + 3;
       final end = text.indexOf('```', start);
-      text = end != -1 ? text.substring(start, end).trim() : text.substring(start).trim();
+      text = end != -1
+          ? text.substring(start, end).trim()
+          : text.substring(start).trim();
     }
 
     // Isolate first '{' to last '}'

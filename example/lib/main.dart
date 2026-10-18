@@ -41,7 +41,8 @@ class MainShowcaseScreen extends StatefulWidget {
   State<MainShowcaseScreen> createState() => _MainShowcaseScreenState();
 }
 
-class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTickerProviderStateMixin {
+class _MainShowcaseScreenState extends State<MainShowcaseScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FlutterOnDeviceAi _ai = FlutterOnDeviceAi();
 
@@ -101,7 +102,9 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
         onCall: (args) {
           final temp = args['temp'] ?? 21.0;
           setState(() {
-            _toolLogs.add('🛠️ Tool Callback Triggered: setThermostat(temp: $temp°C)');
+            _toolLogs.add(
+              '🛠️ Tool Callback Triggered: setThermostat(temp: $temp°C)',
+            );
           });
           return {'status': 'success', 'updatedTemperature': temp};
         },
@@ -169,7 +172,8 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
 
     try {
       final res = await _ai.generateText(
-        prompt: 'Extract profile: "Sarah Jenkins, Lead Architect, 8 years experience, expert in Flutter & Swift"',
+        prompt:
+            'Extract profile: "Sarah Jenkins, Lead Architect, 8 years experience, expert in Flutter & Swift"',
         config: const GenerationConfig(
           responseFormat: ResponseFormat.json,
           schema: {
@@ -180,7 +184,7 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
               'experienceYears': {'type': 'integer'},
               'skills': {
                 'type': 'array',
-                'items': {'type': 'string'}
+                'items': {'type': 'string'},
               },
             },
             'required': ['fullName', 'title', 'skills'],
@@ -203,7 +207,9 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
   Future<void> _runToolCallDemo() async {
     setState(() {
       _isToolCalling = true;
-      _toolLogs.add('Invoking prompt: "Please set the thermostat to 22.5 degrees"');
+      _toolLogs.add(
+        'Invoking prompt: "Please set the thermostat to 22.5 degrees"',
+      );
     });
 
     try {
@@ -275,7 +281,10 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
           children: [
             Icon(Icons.memory, color: Color(0xFF6366F1)),
             SizedBox(width: 8),
-            Text('On-Device Local AI', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'On-Device Local AI',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         bottom: TabBar(
@@ -319,8 +328,14 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: isAvailable ? Colors.green.withAlpha(25) : Colors.orange.withAlpha(25),
-        border: Border(bottom: BorderSide(color: isAvailable ? Colors.green.shade300 : Colors.orange.shade300)),
+        color: isAvailable
+            ? Colors.green.withAlpha(25)
+            : Colors.orange.withAlpha(25),
+        border: Border(
+          bottom: BorderSide(
+            color: isAvailable ? Colors.green.shade300 : Colors.orange.shade300,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -339,7 +354,10 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
           if (_lastLatencyMs > 0)
             Chip(
               visualDensity: VisualDensity.compact,
-              label: Text('${_lastLatencyMs}ms · $_lastTokenCount tokens', style: const TextStyle(fontSize: 11)),
+              label: Text(
+                '${_lastLatencyMs}ms · $_lastTokenCount tokens',
+                style: const TextStyle(fontSize: 11),
+              ),
             ),
         ],
       ),
@@ -355,7 +373,11 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
             itemCount: _messages.length + (_streamBuffer.isNotEmpty ? 1 : 0),
             itemBuilder: (context, index) {
               if (index == _messages.length && _streamBuffer.isNotEmpty) {
-                return _buildMessageBubble('ai', _streamBuffer, isStreaming: true);
+                return _buildMessageBubble(
+                  'ai',
+                  _streamBuffer,
+                  isStreaming: true,
+                );
               }
               final msg = _messages[index];
               return _buildMessageBubble(msg['sender']!, msg['text']!);
@@ -375,15 +397,29 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
                   controller: _promptController,
                   decoration: const InputDecoration(
                     hintText: 'Ask anything to the local model...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(24)),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   onSubmitted: (_) => _sendStreamPrompt(),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton.filled(
-                icon: _isGenerating ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.arrow_upward),
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_upward),
                 onPressed: _isGenerating ? null : _sendStreamPrompt,
               ),
             ],
@@ -393,7 +429,11 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
     );
   }
 
-  Widget _buildMessageBubble(String sender, String text, {bool isStreaming = false}) {
+  Widget _buildMessageBubble(
+    String sender,
+    String text, {
+    bool isStreaming = false,
+  }) {
     final isUser = sender == 'user';
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -402,20 +442,24 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF6366F1) : (Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade200),
+          color: isUser
+              ? const Color(0xFF6366F1)
+              : (Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade800
+                    : Colors.grey.shade200),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              text,
-              style: TextStyle(color: isUser ? Colors.white : null),
-            ),
+            Text(text, style: TextStyle(color: isUser ? Colors.white : null)),
             if (isStreaming)
               const Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text('⚡ streaming live...', style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic)),
+                child: Text(
+                  '⚡ streaming live...',
+                  style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
+                ),
               ),
           ],
         ),
@@ -429,9 +473,14 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Schema-Constrained JSON Mode', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Schema-Constrained JSON Mode',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Constrains on-device generation to emit strict JSON matching a defined schema with zero hallucinations.'),
+          const Text(
+            'Constrains on-device generation to emit strict JSON matching a defined schema with zero hallucinations.',
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _isJsonLoading ? null : _generateStructuredJson,
@@ -466,9 +515,14 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Native Tool Calling (Function Calling)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Native Tool Calling (Function Calling)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('The model autonomously decides when to trigger Dart handlers. Registered tool: setThermostat(temp)'),
+          const Text(
+            'The model autonomously decides when to trigger Dart handlers. Registered tool: setThermostat(temp)',
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _isToolCalling ? null : _runToolCallDemo,
@@ -482,10 +536,17 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _toolLogs.map((log) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(log, style: const TextStyle(fontSize: 13)),
-                  )).toList(),
+                  children: _toolLogs
+                      .map(
+                        (log) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            log,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             ),
@@ -500,9 +561,14 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Generative UI (genUI Integration)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Generative UI (genUI Integration)',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Turns a natural language goal into dynamic typed UI blocks rendered on the fly.'),
+          const Text(
+            'Turns a natural language goal into dynamic typed UI blocks rendered on the fly.',
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _isGeneratingUi ? null : _generateUiModule,
@@ -511,7 +577,8 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
           ),
           const SizedBox(height: 20),
           if (_isGeneratingUi) const Center(child: CircularProgressIndicator()),
-          if (_generatedModule != null) _buildRenderedGenUiModule(_generatedModule!, theme),
+          if (_generatedModule != null)
+            _buildRenderedGenUiModule(_generatedModule!, theme),
         ],
       ),
     );
@@ -530,19 +597,38 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
               children: [
                 const Icon(Icons.fitness_center, color: Color(0xFF6366F1)),
                 const SizedBox(width: 8),
-                Text(spec.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                Text(
+                  spec.title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(spec.blurb, style: TextStyle(color: theme.textTheme.bodySmall?.color)),
+            Text(
+              spec.blurb,
+              style: TextStyle(color: theme.textTheme.bodySmall?.color),
+            ),
             const Divider(height: 24),
             ...spec.blocks.map((block) {
               final type = block['type'];
               if (type == 'stat') {
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(block['label'] ?? '', style: const TextStyle(fontSize: 12)),
-                  trailing: Text(block['value'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                  title: Text(
+                    block['label'] ?? '',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: Text(
+                    block['value'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
                   subtitle: Text(block['subtext'] ?? ''),
                 );
               } else if (type == 'progress') {
@@ -552,22 +638,38 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${block['label']}: ${current.toInt()} / ${target.toInt()} $unit', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(
+                      '${block['label']}: ${current.toInt()} / ${target.toInt()} $unit',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 6),
-                    LinearProgressIndicator(value: current / target, borderRadius: BorderRadius.circular(8)),
+                    LinearProgressIndicator(
+                      value: current / target,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     const SizedBox(height: 12),
                   ],
                 );
               } else if (type == 'checklist') {
                 final items = block['items'] as List? ?? [];
                 return Column(
-                  children: items.map((it) => CheckboxListTile(
-                    value: it['completed'] as bool? ?? false,
-                    onChanged: (v) {},
-                    title: Text(it['title'] ?? '', style: const TextStyle(fontSize: 13)),
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                  )).toList(),
+                  children: items
+                      .map(
+                        (it) => CheckboxListTile(
+                          value: it['completed'] as bool? ?? false,
+                          onChanged: (v) {},
+                          title: Text(
+                            it['title'] ?? '',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      )
+                      .toList(),
                 );
               }
               return const SizedBox.shrink();
@@ -582,7 +684,10 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('On-Device AI Diagnostics Doctor', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'On-Device AI Diagnostics Doctor',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 12),
         ListTile(
           leading: const Icon(Icons.phonelink_setup),
@@ -603,24 +708,36 @@ class _MainShowcaseScreenState extends State<MainShowcaseScreen> with SingleTick
           leading: const Icon(Icons.code),
           title: const Text('Structured Output Support'),
           trailing: Icon(
-            _platformInfo?.supportsStructuredOutput == true ? Icons.check_circle : Icons.cancel,
-            color: _platformInfo?.supportsStructuredOutput == true ? Colors.green : Colors.grey,
+            _platformInfo?.supportsStructuredOutput == true
+                ? Icons.check_circle
+                : Icons.cancel,
+            color: _platformInfo?.supportsStructuredOutput == true
+                ? Colors.green
+                : Colors.grey,
           ),
         ),
         ListTile(
           leading: const Icon(Icons.build),
           title: const Text('Tool Calling Support'),
           trailing: Icon(
-            _platformInfo?.supportsToolCalling == true ? Icons.check_circle : Icons.cancel,
-            color: _platformInfo?.supportsToolCalling == true ? Colors.green : Colors.grey,
+            _platformInfo?.supportsToolCalling == true
+                ? Icons.check_circle
+                : Icons.cancel,
+            color: _platformInfo?.supportsToolCalling == true
+                ? Colors.green
+                : Colors.grey,
           ),
         ),
         ListTile(
           leading: const Icon(Icons.camera_alt),
           title: const Text('Multimodal / Vision Support'),
           trailing: Icon(
-            _platformInfo?.supportsVision == true ? Icons.check_circle : Icons.cancel,
-            color: _platformInfo?.supportsVision == true ? Colors.green : Colors.grey,
+            _platformInfo?.supportsVision == true
+                ? Icons.check_circle
+                : Icons.cancel,
+            color: _platformInfo?.supportsVision == true
+                ? Colors.green
+                : Colors.grey,
           ),
         ),
       ],

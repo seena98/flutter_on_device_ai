@@ -30,7 +30,10 @@ class OnDeviceAiSession {
   }
 
   /// Appends image bytes for multimodal inference (where supported).
-  Future<void> addImage(Uint8List imageBytes, {String mimeType = 'image/jpeg'}) async {
+  Future<void> addImage(
+    Uint8List imageBytes, {
+    String mimeType = 'image/jpeg',
+  }) async {
     _ensureOpen();
     await _platform.sessionAddImage(sessionId, imageBytes, mimeType: mimeType);
   }

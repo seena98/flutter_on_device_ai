@@ -23,17 +23,21 @@ class MockFlutterOnDeviceAiPlatform
     String? instructions,
   }) {
     if (config?.responseFormat == ResponseFormat.json) {
-      return Future.value(AiResponse(
-        text: '{"result": "mock_json", "count": 42}',
-        tokenCount: 15,
-        generationTimeMs: 20,
-      ));
+      return Future.value(
+        AiResponse(
+          text: '{"result": "mock_json", "count": 42}',
+          tokenCount: 15,
+          generationTimeMs: 20,
+        ),
+      );
     }
-    return Future.value(AiResponse(
-      text: 'Mock response for: $prompt',
-      tokenCount: 10,
-      generationTimeMs: 15,
-    ));
+    return Future.value(
+      AiResponse(
+        text: 'Mock response for: $prompt',
+        tokenCount: 10,
+        generationTimeMs: 15,
+      ),
+    );
   }
 
   @override
@@ -50,25 +54,30 @@ class MockFlutterOnDeviceAiPlatform
 
   @override
   Future<OnDeviceAiPlatformInfo> getPlatformInfo() {
-    return Future.value(const OnDeviceAiPlatformInfo(
-      backend: OnDeviceAiBackend.appleFoundationModels,
-      supportsToolCalling: true,
-      supportsStructuredOutput: true,
-      supportsVision: true,
-      supportsModelDownload: true,
-      supportsPlayStoreRedirect: false,
-    ));
+    return Future.value(
+      const OnDeviceAiPlatformInfo(
+        backend: OnDeviceAiBackend.appleFoundationModels,
+        supportsToolCalling: true,
+        supportsStructuredOutput: true,
+        supportsVision: true,
+        supportsModelDownload: true,
+        supportsPlayStoreRedirect: false,
+      ),
+    );
   }
 
   @override
-  Future<ModelFeatureStatus> getModelStatus() => Future.value(ModelFeatureStatus.available);
+  Future<ModelFeatureStatus> getModelStatus() =>
+      Future.value(ModelFeatureStatus.available);
 
   @override
   Stream<ModelDownloadStatus> downloadModel() {
-    return Stream.value(const ModelDownloadStatus(
-      status: ModelFeatureStatus.available,
-      progress: 1.0,
-    ));
+    return Stream.value(
+      const ModelDownloadStatus(
+        status: ModelFeatureStatus.available,
+        progress: 1.0,
+      ),
+    );
   }
 
   @override
@@ -85,20 +94,31 @@ class MockFlutterOnDeviceAiPlatform
   Future<void> sessionAddQuery(String sessionId, String text) => Future.value();
 
   @override
-  Future<void> sessionAddImage(String sessionId, imageBytes, {String mimeType = 'image/jpeg'}) => Future.value();
+  Future<void> sessionAddImage(
+    String sessionId,
+    imageBytes, {
+    String mimeType = 'image/jpeg',
+  }) => Future.value();
 
   @override
-  Future<AiResponse> sessionGetResponse(String sessionId, {GenerationConfig? config}) {
+  Future<AiResponse> sessionGetResponse(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
     return Future.value(AiResponse(text: 'Mock session reply'));
   }
 
   @override
-  Stream<String> sessionGetResponseStream(String sessionId, {GenerationConfig? config}) {
+  Stream<String> sessionGetResponseStream(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
     return Stream.fromIterable(['Session ', 'chunk']);
   }
 
   @override
-  Future<int> sessionCountTokens(String sessionId, {String? text}) => Future.value(7);
+  Future<int> sessionCountTokens(String sessionId, {String? text}) =>
+      Future.value(7);
 
   @override
   Future<void> sessionStopGeneration(String sessionId) => Future.value();
@@ -110,7 +130,8 @@ class MockFlutterOnDeviceAiPlatform
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  final FlutterOnDeviceAiPlatform initialPlatform = FlutterOnDeviceAiPlatform.instance;
+  final FlutterOnDeviceAiPlatform initialPlatform =
+      FlutterOnDeviceAiPlatform.instance;
 
   test('$MethodChannelFlutterOnDeviceAi is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelFlutterOnDeviceAi>());
@@ -146,7 +167,9 @@ void main() {
     });
 
     test('generateTextStream yields chunks', () async {
-      final chunks = await ai.generateTextStream(prompt: 'Stream please').toList();
+      final chunks = await ai
+          .generateTextStream(prompt: 'Stream please')
+          .toList();
       expect(chunks, ['Mock ', 'stream ', 'chunk']);
     });
 

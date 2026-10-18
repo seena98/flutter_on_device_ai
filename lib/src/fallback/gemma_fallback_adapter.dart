@@ -4,18 +4,20 @@ import '../models/generation_config.dart';
 import 'fallback_adapter.dart';
 
 /// Handler signature for custom or flutter_gemma model inference calls.
-typedef GemmaTextGenerator = Future<String> Function(
-  String prompt, {
-  GenerationConfig? config,
-  String? instructions,
-});
+typedef GemmaTextGenerator =
+    Future<String> Function(
+      String prompt, {
+      GenerationConfig? config,
+      String? instructions,
+    });
 
 /// Handler signature for streaming responses from flutter_gemma / LiteRT.
-typedef GemmaStreamGenerator = Stream<String> Function(
-  String prompt, {
-  GenerationConfig? config,
-  String? instructions,
-});
+typedef GemmaStreamGenerator =
+    Stream<String> Function(
+      String prompt, {
+      GenerationConfig? config,
+      String? instructions,
+    });
 
 /// A ready-to-use adapter connecting [FlutterOnDeviceAi] to [flutter_gemma]
 /// or any on-device LiteRT/Gemma model runner.
@@ -55,10 +57,7 @@ class GemmaFallbackAdapter implements OnDeviceAiFallbackAdapter {
         instructions: instructions,
       );
       final duration = DateTime.now().millisecondsSinceEpoch - startTime;
-      return AiResponse(
-        text: text,
-        generationTimeMs: duration,
-      );
+      return AiResponse(text: text, generationTimeMs: duration);
     }
 
     // Default simulation / fallback notification when raw runner is not linked

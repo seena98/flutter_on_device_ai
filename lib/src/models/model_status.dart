@@ -56,5 +56,6 @@ class ModelDownloadStatus {
   }
 
   @override
-  String toString() => 'ModelDownloadStatus(status: ${status.name}, progress: ${(progress != null ? (progress! * 100).toStringAsFixed(1) : "?")}%${errorMessage != null ? ", error: $errorMessage" : ""})';
+  String toString() =>
+      'ModelDownloadStatus(status: ${status.name}, progress: ${(progress != null ? (progress! * 100).toStringAsFixed(1) : "?")}%${errorMessage != null ? ", error: $errorMessage" : ""})';
 }

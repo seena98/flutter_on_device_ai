@@ -18,7 +18,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
   final eventChannel = const EventChannel('flutter_on_device_ai/stream');
 
   @visibleForTesting
-  final downloadEventChannel = const EventChannel('flutter_on_device_ai/download_stream');
+  final downloadEventChannel = const EventChannel(
+    'flutter_on_device_ai/download_stream',
+  );
 
   final Map<String, OnDeviceAiTool> _registeredTools = {};
   bool _methodHandlerConfigured = false;
@@ -33,7 +35,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
     if (call.method == 'onToolCall') {
       final args = Map<String, dynamic>.from(call.arguments as Map);
       final toolName = args['name'] as String?;
-      final toolArgs = Map<String, dynamic>.from(args['arguments'] as Map? ?? {});
+      final toolArgs = Map<String, dynamic>.from(
+        args['arguments'] as Map? ?? {},
+      );
 
       if (toolName != null && _registeredTools.containsKey(toolName)) {
         final tool = _registeredTools[toolName]!;
@@ -64,7 +68,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
 
   @override
   Future<String> availabilityReason() async {
-    final result = await methodChannel.invokeMethod<String>('availabilityReason');
+    final result = await methodChannel.invokeMethod<String>(
+      'availabilityReason',
+    );
     return result ?? 'Unknown availability reason.';
   }
 
@@ -84,11 +90,14 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
     String? instructions,
   }) async {
     _ensureMethodHandler();
-    final map = await methodChannel.invokeMapMethod<String, dynamic>('generateText', {
-      'prompt': prompt,
-      'config': ?config?.toMap(),
-      'instructions': ?instructions,
-    });
+    final map = await methodChannel.invokeMapMethod<String, dynamic>(
+      'generateText',
+      {
+        'prompt': prompt,
+        'config': ?config?.toMap(),
+        'instructions': ?instructions,
+      },
+    );
     return AiResponse.fromMap(map ?? {'text': ''});
   }
 
@@ -102,13 +111,15 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
     final controller = StreamController<String>();
 
     // Send the initiation call
-    methodChannel.invokeMethod<void>('startStream', {
-      'prompt': prompt,
-      'config': ?config?.toMap(),
-      'instructions': ?instructions,
-    }).catchError((e) {
-      if (!controller.isClosed) controller.addError(e);
-    });
+    methodChannel
+        .invokeMethod<void>('startStream', {
+          'prompt': prompt,
+          'config': ?config?.toMap(),
+          'instructions': ?instructions,
+        })
+        .catchError((e) {
+          if (!controller.isClosed) controller.addError(e);
+        });
 
     final subscription = eventChannel.receiveBroadcastStream().listen(
       (data) {
@@ -151,7 +162,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
 
   @override
   Future<OnDeviceAiPlatformInfo> getPlatformInfo() async {
-    final map = await methodChannel.invokeMapMethod<String, dynamic>('getPlatformInfo');
+    final map = await methodChannel.invokeMapMethod<String, dynamic>(
+      'getPlatformInfo',
+    );
     return OnDeviceAiPlatformInfo.fromMap(map ?? {'backend': 'unsupported'});
   }
 
@@ -176,7 +189,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
 
   @override
   Future<bool> openAICorePlayStore() async {
-    final result = await methodChannel.invokeMethod<bool>('openAICorePlayStore');
+    final result = await methodChannel.invokeMethod<bool>(
+      'openAICorePlayStore',
+    );
     return result ?? false;
   }
 
@@ -195,11 +210,12 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
       }
     }
 
-    final sessionId = await methodChannel.invokeMethod<String>('createSession', {
-      'systemInstruction': ?systemInstruction,
-      'tools': ?tools?.map((t) => t.toMap()).toList(),
-      'config': ?config?.toMap(),
-    });
+    final sessionId = await methodChannel
+        .invokeMethod<String>('createSession', {
+          'systemInstruction': ?systemInstruction,
+          'tools': ?tools?.map((t) => t.toMap()).toList(),
+          'config': ?config?.toMap(),
+        });
     return sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}';
   }
 
@@ -212,7 +228,11 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
   }
 
   @override
-  Future<void> sessionAddImage(String sessionId, Uint8List imageBytes, {String mimeType = 'image/jpeg'}) async {
+  Future<void> sessionAddImage(
+    String sessionId,
+    Uint8List imageBytes, {
+    String mimeType = 'image/jpeg',
+  }) async {
     await methodChannel.invokeMethod<void>('sessionAddImage', {
       'sessionId': sessionId,
       'imageBytes': imageBytes,
@@ -221,24 +241,32 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
   }
 
   @override
-  Future<AiResponse> sessionGetResponse(String sessionId, {GenerationConfig? config}) async {
-    final map = await methodChannel.invokeMapMethod<String, dynamic>('sessionGetResponse', {
-      'sessionId': sessionId,
-      'config': ?config?.toMap(),
-    });
+  Future<AiResponse> sessionGetResponse(
+    String sessionId, {
+    GenerationConfig? config,
+  }) async {
+    final map = await methodChannel.invokeMapMethod<String, dynamic>(
+      'sessionGetResponse',
+      {'sessionId': sessionId, 'config': ?config?.toMap()},
+    );
     return AiResponse.fromMap(map ?? {'text': ''});
   }
 
   @override
-  Stream<String> sessionGetResponseStream(String sessionId, {GenerationConfig? config}) {
+  Stream<String> sessionGetResponseStream(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
     final controller = StreamController<String>();
 
-    methodChannel.invokeMethod<void>('sessionStartStream', {
-      'sessionId': sessionId,
-      'config': ?config?.toMap(),
-    }).catchError((e) {
-      if (!controller.isClosed) controller.addError(e);
-    });
+    methodChannel
+        .invokeMethod<void>('sessionStartStream', {
+          'sessionId': sessionId,
+          'config': ?config?.toMap(),
+        })
+        .catchError((e) {
+          if (!controller.isClosed) controller.addError(e);
+        });
 
     final channelName = 'flutter_on_device_ai/session_stream_$sessionId';
     final sessionChannel = EventChannel(channelName);
@@ -262,7 +290,9 @@ class MethodChannelFlutterOnDeviceAi extends FlutterOnDeviceAiPlatform {
 
     controller.onCancel = () {
       sub.cancel();
-      methodChannel.invokeMethod<void>('sessionStopGeneration', {'sessionId': sessionId});
+      methodChannel.invokeMethod<void>('sessionStopGeneration', {
+        'sessionId': sessionId,
+      });
     };
 
     return controller.stream;

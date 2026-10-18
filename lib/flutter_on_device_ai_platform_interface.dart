@@ -101,18 +101,30 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
   }
 
   /// Appends an image for multimodal input.
-  Future<void> sessionAddImage(String sessionId, Uint8List imageBytes, {String mimeType = 'image/jpeg'}) {
+  Future<void> sessionAddImage(
+    String sessionId,
+    Uint8List imageBytes, {
+    String mimeType = 'image/jpeg',
+  }) {
     throw UnimplementedError('sessionAddImage() has not been implemented.');
   }
 
   /// Generates the next response for a session.
-  Future<AiResponse> sessionGetResponse(String sessionId, {GenerationConfig? config}) {
+  Future<AiResponse> sessionGetResponse(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
     throw UnimplementedError('sessionGetResponse() has not been implemented.');
   }
 
   /// Streams the next response for a session.
-  Stream<String> sessionGetResponseStream(String sessionId, {GenerationConfig? config}) {
-    throw UnimplementedError('sessionGetResponseStream() has not been implemented.');
+  Stream<String> sessionGetResponseStream(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
+    throw UnimplementedError(
+      'sessionGetResponseStream() has not been implemented.',
+    );
   }
 
   /// Measures exact or approximate token count for a session.
@@ -122,7 +134,9 @@ abstract class FlutterOnDeviceAiPlatform extends PlatformInterface {
 
   /// Aborts generation in a session.
   Future<void> sessionStopGeneration(String sessionId) {
-    throw UnimplementedError('sessionStopGeneration() has not been implemented.');
+    throw UnimplementedError(
+      'sessionStopGeneration() has not been implemented.',
+    );
   }
 
   /// Closes an active session.

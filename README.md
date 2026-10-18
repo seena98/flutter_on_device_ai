@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/seena98/flutter_on_device_ai/actions/workflows/ci.yml"><img src="https://github.com/seena98/flutter_on_device_ai/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pub.dev/packages/flutter_on_device_ai"><img src="https://img.shields.io/pub/v/flutter_on_device_ai.svg?style=flat-square&color=6366F1" alt="Pub Version"></a>
   <a href="https://pub.dev/packages/flutter_on_device_ai/score"><img src="https://img.shields.io/pub/points/flutter_on_device_ai?style=flat-square&color=10B981" alt="Pub Points"></a>
   <a href="https://github.com/seena98/flutter_on_device_ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>

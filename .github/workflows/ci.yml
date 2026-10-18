@@ -1,0 +1,149 @@
+name: CI/CD Multi-Platform Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint_and_test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies (Root)
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze code (Root & Example)
+        run: flutter analyze
+
+      - name: Run root unit tests
+        run: flutter test test/
+
+      - name: Run example widget tests
+        run: |
+          cd example
+          flutter pub get
+          flutter test test/
+
+  build_android:
+    name: Build Android (APK)
+    needs: lint_and_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Android APK
+        run: |
+          cd example
+          flutter pub get
+          flutter build apk --debug
+
+  build_web:
+    name: Build Web
+    needs: lint_and_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Web
+        run: |
+          cd example
+          flutter pub get
+          flutter build web
+
+  build_apple:
+    name: Build iOS & macOS
+    needs: lint_and_test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build iOS Simulator Bundle
+        run: |
+          cd example
+          flutter pub get
+          flutter build ios --no-codesign --simulator
+
+      - name: Build macOS App
+        run: |
+          cd example
+          flutter build macos
+
+  build_linux:
+    name: Build Linux
+    needs: lint_and_test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Linux Desktop
+        run: |
+          cd example
+          flutter pub get
+          flutter build linux
+
+  build_windows:
+    name: Build Windows
+    needs: lint_and_test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Windows Desktop
+        run: |
+          cd example
+          flutter pub get
+          flutter build windows

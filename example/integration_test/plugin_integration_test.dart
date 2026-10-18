@@ -5,7 +5,9 @@ import 'package:flutter_on_device_ai/flutter_on_device_ai.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('probe on-device AI platform capabilities test', (WidgetTester tester) async {
+  testWidgets('probe on-device AI platform capabilities test', (
+    WidgetTester tester,
+  ) async {
     final FlutterOnDeviceAi plugin = FlutterOnDeviceAi();
     final info = await plugin.getPlatformInfo();
     expect(info.backend, isNotNull);

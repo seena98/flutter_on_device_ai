@@ -93,7 +93,8 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
     }
 
     try {
-      final script = '''
+      final script =
+          '''
         (async () => {
           const factory = window.ai?.languageModel || window.LanguageModel;
           const session = await factory.create({
@@ -110,10 +111,7 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
         final val = await promise.toDart;
         final output = val?.dartify()?.toString() ?? '';
         final duration = DateTime.now().millisecondsSinceEpoch - startTime;
-        return AiResponse(
-          text: output,
-          generationTimeMs: duration,
-        );
+        return AiResponse(text: output, generationTimeMs: duration);
       }
     } catch (e) {
       return AiResponse(
@@ -168,7 +166,9 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
   Future<OnDeviceAiPlatformInfo> getPlatformInfo() async {
     final hasAi = _hasChromeBuiltInAi();
     return OnDeviceAiPlatformInfo(
-      backend: hasAi ? OnDeviceAiBackend.chromePromptApi : OnDeviceAiBackend.unsupported,
+      backend: hasAi
+          ? OnDeviceAiBackend.chromePromptApi
+          : OnDeviceAiBackend.unsupported,
       supportsToolCalling: false,
       supportsStructuredOutput: hasAi,
       supportsVision: false,
@@ -191,10 +191,12 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
   Stream<ModelDownloadStatus> downloadModel() {
     final controller = StreamController<ModelDownloadStatus>();
     scheduleMicrotask(() async {
-      controller.add(const ModelDownloadStatus(
-        status: ModelFeatureStatus.available,
-        progress: 1.0,
-      ));
+      controller.add(
+        const ModelDownloadStatus(
+          status: ModelFeatureStatus.available,
+          progress: 1.0,
+        ),
+      );
       await controller.close();
     });
     return controller.stream;
@@ -232,12 +234,20 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
   }
 
   @override
-  Future<void> sessionAddImage(String sessionId, Uint8List imageBytes, {String mimeType = 'image/jpeg'}) async {}
+  Future<void> sessionAddImage(
+    String sessionId,
+    Uint8List imageBytes, {
+    String mimeType = 'image/jpeg',
+  }) async {}
 
   @override
-  Future<AiResponse> sessionGetResponse(String sessionId, {GenerationConfig? config}) async {
+  Future<AiResponse> sessionGetResponse(
+    String sessionId, {
+    GenerationConfig? config,
+  }) async {
     final session = _sessions[sessionId];
-    final transcript = (session?['transcript'] as List<String>?)?.join('\n') ?? '';
+    final transcript =
+        (session?['transcript'] as List<String>?)?.join('\n') ?? '';
     final systemInstruction = session?['systemInstruction'] as String?;
 
     return await generateText(
@@ -248,9 +258,13 @@ class FlutterOnDeviceAiWeb extends FlutterOnDeviceAiPlatform {
   }
 
   @override
-  Stream<String> sessionGetResponseStream(String sessionId, {GenerationConfig? config}) {
+  Stream<String> sessionGetResponseStream(
+    String sessionId, {
+    GenerationConfig? config,
+  }) {
     final session = _sessions[sessionId];
-    final transcript = (session?['transcript'] as List<String>?)?.join('\n') ?? '';
+    final transcript =
+        (session?['transcript'] as List<String>?)?.join('\n') ?? '';
     final systemInstruction = session?['systemInstruction'] as String?;
 
     return generateTextStream(

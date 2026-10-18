@@ -17,11 +17,7 @@ class AiResponse {
   /// Cached parsed arbitrary JSON structure (object, list, scalar).
   Object? _cachedDecodedJson;
 
-  AiResponse({
-    required this.text,
-    this.tokenCount,
-    this.generationTimeMs,
-  });
+  AiResponse({required this.text, this.tokenCount, this.generationTimeMs});
 
   /// Decodes [text] as a JSON Object (`Map<String, dynamic>`).
   ///
@@ -85,5 +81,6 @@ class AiResponse {
   }
 
   @override
-  String toString() => 'AiResponse(tokens: $tokenCount, time: ${generationTimeMs}ms, text: ${text.length > 50 ? "${text.substring(0, 50)}..." : text})';
+  String toString() =>
+      'AiResponse(tokens: $tokenCount, time: ${generationTimeMs}ms, text: ${text.length > 50 ? "${text.substring(0, 50)}..." : text})';
 }

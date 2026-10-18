@@ -109,25 +109,29 @@ class FlutterOnDeviceAi {
       final controller = StreamController<String>();
       _platform.isAvailable().then((nativeAvailable) {
         if (!nativeAvailable) {
-          fallbackAdapter!.generateTextStream(
-            prompt: prompt,
-            config: config,
-            instructions: instructions,
-          ).listen(
-            controller.add,
-            onError: controller.addError,
-            onDone: controller.close,
-          );
+          fallbackAdapter!
+              .generateTextStream(
+                prompt: prompt,
+                config: config,
+                instructions: instructions,
+              )
+              .listen(
+                controller.add,
+                onError: controller.addError,
+                onDone: controller.close,
+              );
         } else {
-          _platform.generateTextStream(
-            prompt: prompt,
-            config: config,
-            instructions: instructions,
-          ).listen(
-            controller.add,
-            onError: controller.addError,
-            onDone: controller.close,
-          );
+          _platform
+              .generateTextStream(
+                prompt: prompt,
+                config: config,
+                instructions: instructions,
+              )
+              .listen(
+                controller.add,
+                onError: controller.addError,
+                onDone: controller.close,
+              );
         }
       });
       return controller.stream;
@@ -184,7 +188,9 @@ class FlutterOnDeviceAi {
   }
 
   /// Prepares the on-device model, starting download if required, and awaiting readiness.
-  static Future<void> ensureReady({void Function(double progress)? onProgress}) async {
+  static Future<void> ensureReady({
+    void Function(double progress)? onProgress,
+  }) async {
     final ai = FlutterOnDeviceAi();
     final status = await ai.getModelStatus();
     if (status == ModelFeatureStatus.available) {
@@ -205,7 +211,9 @@ class FlutterOnDeviceAi {
         sub.cancel();
         if (!completer.isCompleted) {
           completer.completeError(
-            StateError('Model download failed: ${event.errorMessage ?? "unavailable"}'),
+            StateError(
+              'Model download failed: ${event.errorMessage ?? "unavailable"}',
+            ),
           );
         }
       }

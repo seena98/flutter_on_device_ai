@@ -67,10 +67,12 @@ class OnDeviceAiPlatformInfo {
     return OnDeviceAiPlatformInfo(
       backend: backend,
       supportsToolCalling: map['supportsToolCalling'] as bool? ?? false,
-      supportsStructuredOutput: map['supportsStructuredOutput'] as bool? ?? false,
+      supportsStructuredOutput:
+          map['supportsStructuredOutput'] as bool? ?? false,
       supportsVision: map['supportsVision'] as bool? ?? false,
       supportsModelDownload: map['supportsModelDownload'] as bool? ?? false,
-      supportsPlayStoreRedirect: map['supportsPlayStoreRedirect'] as bool? ?? false,
+      supportsPlayStoreRedirect:
+          map['supportsPlayStoreRedirect'] as bool? ?? false,
       isConfigured: map['isConfigured'] as bool? ?? true,
       diagnosticNotes: map['diagnosticNotes'] as String?,
     );
@@ -91,5 +93,6 @@ class OnDeviceAiPlatformInfo {
   }
 
   @override
-  String toString() => 'OnDeviceAiPlatformInfo(backend: ${backend.name}, tools: $supportsToolCalling, schema: $supportsStructuredOutput, vision: $supportsVision)';
+  String toString() =>
+      'OnDeviceAiPlatformInfo(backend: ${backend.name}, tools: $supportsToolCalling, schema: $supportsStructuredOutput, vision: $supportsVision)';
 }
