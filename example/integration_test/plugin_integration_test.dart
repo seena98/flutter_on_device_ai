@@ -110,10 +110,9 @@ void main() {
     await s.close();
   });
 
-  // Needs network once (downloads about 270 MB); proves the local llama.cpp
-  // fallback on any device, including simulators with no OS model.
-  // Needs network once (downloads about 270 MB). Talks to the adapter directly
-  // so a device that has an OS model still exercises the local fallback.
+  // Needs network once (downloads about 270 MB). Proves the local llama.cpp
+  // fallback on any device, including simulators with no OS model. Talks to the
+  // adapter directly so a device that has an OS model still exercises it.
   testWidgets('local fallback model downloads, answers and streams', (
     tester,
   ) async {
