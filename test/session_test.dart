@@ -463,6 +463,39 @@ void main() {
       expect(progress, [1.0]);
     });
 
+    test('a failing OS model fails over to the fallback mid-session', () async {
+      final fake = install(
+        responder: (p, h) => throw const OnDeviceAiUnavailableException('gone'),
+      );
+      expect(fake.createdSessions, isEmpty);
+      ai.fallbackAdapter = CallbackFallbackAdapter(
+        onGenerateText: (prompt, {config, instructions}) async => 'rescued',
+      );
+      final s = await ai.createSession();
+      expect((await s.ask('hi')).text, 'rescued');
+      expect((await s.ask('again')).text, 'rescued');
+    });
+
+    test('adapters get structured messages', () async {
+      install(availability: unavailable);
+      List<FallbackMessage>? seen;
+      ai.fallbackAdapter = _ChatAdapter((m) => seen = m);
+      final s = await ai.createSession();
+      await s.ask('one');
+      await s.ask('two');
+      expect(seen!.map((m) => '${m.isUser}:${m.text}'), [
+        'true:one',
+        'false:ok',
+        'true:two',
+      ]);
+    });
+
+    test('recommendedFor picks the largest model that fits', () {
+      expect(LocalLlmFallbackAdapter.recommendedFor(1).label, 'SmolLM2 360M');
+      expect(LocalLlmFallbackAdapter.recommendedFor(4).label, 'Qwen2.5 1.5B');
+      expect(LocalLlmFallbackAdapter.recommendedFor(64).label, 'Qwen2.5 3B');
+    });
+
     test('fallback sessions keep the conversation', () async {
       install(availability: unavailable);
       final seen = <String>[];
@@ -611,4 +644,38 @@ void main() {
       );
     });
   });
+}
+
+class _ChatAdapter extends OnDeviceAiFallbackAdapter {
+  _ChatAdapter(this.onChat);
+  final void Function(List<FallbackMessage>) onChat;
+
+  @override
+  String get name => 'chat';
+  @override
+  Future<bool> isReady() async => true;
+  @override
+  Future<AiResponse> generateText({
+    required String prompt,
+    GenerationConfig? config,
+    String? instructions,
+  }) => throw StateError('generateChat should be used');
+  @override
+  Future<AiResponse> generateChat({
+    required List<FallbackMessage> messages,
+    GenerationConfig? config,
+    String? instructions,
+  }) async {
+    onChat(messages);
+    return AiResponse(text: 'ok');
+  }
+
+  @override
+  Stream<String> generateTextStream({
+    required String prompt,
+    GenerationConfig? config,
+    String? instructions,
+  }) => const Stream.empty();
+  @override
+  Future<void> dispose() async {}
 }

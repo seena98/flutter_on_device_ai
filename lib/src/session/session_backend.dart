@@ -89,12 +89,15 @@ class FallbackSessionBackend implements SessionBackend {
   FallbackSessionBackend({
     required this.adapter,
     required this.systemInstruction,
-  });
+    List<FallbackMessage> history = const [],
+  }) {
+    _history.addAll(history);
+  }
 
   final OnDeviceAiFallbackAdapter adapter;
   final String? systemInstruction;
 
-  final List<_Turn> _history = [];
+  final List<FallbackMessage> _history = [];
   final List<String> _pending = [];
   StreamSubscription<String>? _activeStream;
   bool _cancelled = false;
@@ -118,49 +121,44 @@ class FallbackSessionBackend implements SessionBackend {
     );
   }
 
-  String _takePrompt() {
+  List<FallbackMessage> _takeMessages() {
     if (_pending.isEmpty) {
       throw const OnDeviceAiException(
         'Nothing to answer: call addQuery() before requesting a response.',
         code: 'EMPTY_TURN',
       );
     }
-    _history.add(_Turn('User', _pending.join('\n')));
+    _history.add(FallbackMessage.user(_pending.join('\n')));
     _pending.clear();
-    return _render();
-  }
-
-  /// Renders the transcript as a plain chat prompt ending on the assistant cue.
-  String _render() {
-    final b = StringBuffer();
-    for (final t in _history) {
-      b.writeln('${t.role}: ${t.text}');
-    }
-    b.write('Assistant:');
-    return b.toString();
+    return List.of(_history);
   }
 
   @override
   Future<AiResponse> respond(GenerationConfig? config) async {
     _cancelled = false;
-    final prompt = _takePrompt();
-    final response = await adapter.generateText(
-      prompt: prompt,
-      config: config,
-      instructions: systemInstruction,
-    );
-    if (_cancelled) throw const OnDeviceAiCancelledException();
-    _history.add(_Turn('Assistant', response.text));
-    return response;
+    final messages = _takeMessages();
+    try {
+      final response = await adapter.generateChat(
+        messages: messages,
+        config: config,
+        instructions: systemInstruction,
+      );
+      if (_cancelled) throw const OnDeviceAiCancelledException();
+      _history.add(FallbackMessage.assistant(response.text));
+      return response;
+    } catch (_) {
+      _history.removeLast();
+      rethrow;
+    }
   }
 
   @override
   Stream<String> respondStream(GenerationConfig? config) async* {
     _cancelled = false;
-    final prompt = _takePrompt();
+    final messages = _takeMessages();
     final buffer = StringBuffer();
-    final source = adapter.generateTextStream(
-      prompt: prompt,
+    final source = adapter.generateChatStream(
+      messages: messages,
       config: config,
       instructions: systemInstruction,
     );
@@ -176,7 +174,10 @@ class FallbackSessionBackend implements SessionBackend {
         yield chunk;
       }
       if (_cancelled) throw const OnDeviceAiCancelledException();
-      _history.add(_Turn('Assistant', buffer.toString()));
+      _history.add(FallbackMessage.assistant(buffer.toString()));
+    } catch (_) {
+      if (_history.isNotEmpty && _history.last.isUser) _history.removeLast();
+      rethrow;
     } finally {
       await _activeStream?.cancel();
       _activeStream = null;
@@ -209,8 +210,120 @@ class FallbackSessionBackend implements SessionBackend {
   }
 }
 
-class _Turn {
-  const _Turn(this.role, this.text);
-  final String role;
-  final String text;
+/// Runs a session on the OS model and, if that model turns out to be
+/// unusable (for example Apple's model assets are missing on a simulator),
+/// moves the conversation to the fallback adapter and answers the turn there.
+class FailoverSessionBackend implements SessionBackend {
+  FailoverSessionBackend({
+    required this.primary,
+    required this.adapter,
+    required this.fallbackInstruction,
+  });
+
+  final SessionBackend primary;
+  final OnDeviceAiFallbackAdapter adapter;
+
+  /// System instruction (with the emulated tool prompt) used after failover.
+  final String? fallbackInstruction;
+
+  final List<FallbackMessage> _history = [];
+  final List<String> _pending = [];
+  SessionBackend? _fallback;
+
+  SessionBackend get _active => _fallback ?? primary;
+
+  @override
+  bool get nativeTools => _active.nativeTools;
+  @override
+  bool get nativeStructuredOutput => _active.nativeStructuredOutput;
+  @override
+  bool get supportsImages => _active.supportsImages;
+  @override
+  bool get exactTokenCounts => _active.exactTokenCounts;
+
+  @override
+  Future<void> addQuery(String text) async {
+    _pending.add(text);
+    await _active.addQuery(text);
+  }
+
+  @override
+  Future<void> addImage(Uint8List bytes, String mimeType) =>
+      _active.addImage(bytes, mimeType);
+
+  Future<bool> _failOver(Object error) async {
+    if (_fallback != null || error is! OnDeviceAiUnavailableException) {
+      return false;
+    }
+    bool ready;
+    try {
+      ready = await adapter.isReady();
+    } catch (_) {
+      ready = false;
+    }
+    if (!ready) return false;
+    final next = FallbackSessionBackend(
+      adapter: adapter,
+      systemInstruction: fallbackInstruction,
+      history: _history,
+    );
+    for (final text in _pending) {
+      await next.addQuery(text);
+    }
+    _fallback = next;
+    return true;
+  }
+
+  void _commit(String answer) {
+    _history
+      ..add(FallbackMessage.user(_pending.join('\n')))
+      ..add(FallbackMessage.assistant(answer));
+    _pending.clear();
+  }
+
+  @override
+  Future<AiResponse> respond(GenerationConfig? config) async {
+    if (_fallback != null) return _fallback!.respond(config);
+    try {
+      final response = await primary.respond(config);
+      _commit(response.text);
+      return response;
+    } catch (e) {
+      if (!await _failOver(e)) rethrow;
+      return _fallback!.respond(config);
+    }
+  }
+
+  @override
+  Stream<String> respondStream(GenerationConfig? config) async* {
+    if (_fallback != null) {
+      yield* _fallback!.respondStream(config);
+      return;
+    }
+    final buffer = StringBuffer();
+    var started = false;
+    try {
+      await for (final chunk in primary.respondStream(config)) {
+        started = true;
+        buffer.write(chunk);
+        yield chunk;
+      }
+      _commit(buffer.toString());
+    } catch (e) {
+      if (started || !await _failOver(e)) rethrow;
+      yield* _fallback!.respondStream(config);
+    }
+  }
+
+  @override
+  Future<int> countTokens(String? text) => _active.countTokens(text);
+
+  @override
+  Future<void> stop() => _active.stop();
+
+  @override
+  Future<void> close() async {
+    await primary.close();
+    await _fallback?.close();
+  }
 }

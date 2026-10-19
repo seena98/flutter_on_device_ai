@@ -3,9 +3,13 @@
 * **Built-in local fallback model.** `FlutterDeviceAi.withLocalModel()` / `LocalLlmFallbackAdapter` run a real open GGUF (or `.litertlm`) model with llama.cpp through `llamadart` when the OS has no model. `prepare()` downloads it. `OnDeviceAiFallbackAdapter.prepare()` added.
 * **Breaking:** `EdgeAiFallbackAdapter` is now `CallbackFallbackAdapter`; `OnDeviceAiBackend.fallbackEdgeAi` is now `OnDeviceAiBackend.fallback`. The plugin no longer refers to `flutter_edge_ai`.
 * **Breaking:** minimums raised to Flutter 3.38 / Dart 3.10.7, iOS 16.4, macOS 14 (llama.cpp). Apps need Swift Package Manager enabled on iOS and macOS (the llama.cpp companion is SwiftPM-only), so CocoaPods-only apps must migrate. The plugin manifest declares `INTERNET` on Android.
+* Local fallback quality: conversations use the model's own chat template through structured `FallbackMessage`s (`OnDeviceAiFallbackAdapter.generateChat` / `generateChatStream`, default renders a transcript), and JSON-schema answers are grammar-constrained. The emulated tool prompt now includes a worked example.
+* Local fallback downloads and storage: resumable downloads with retries, optional `sha256`, `allowDownload` hook (for example Wi-Fi only), `cancelPrepare()`, typed errors for network and disk failures, `status` stream (`idle`, `downloading`, `loading`, `ready`, `unloaded`), `isDownloaded()`, `deleteModel()`, `presets` and `recommendedFor(ramGb)`.
+* Local fallback memory: `idleUnloadAfter` and `unload()` release the model from RAM; the next request reloads it from disk without downloading.
+* Failover: a session on the OS model that reports `unavailable` mid-use moves to the fallback and answers the turn there.
 * Android: ML Kit `GenAiException` codes map to `CANCELLED`, `SESSION_BUSY`, `UNAVAILABLE`, `UNSUPPORTED`.
 * Generated UI: table rows from small models are padded or trimmed to the header width, fixing a `DataTable` assertion.
-* Example app: local model picker (presets or any GGUF) and the real fallback instead of the echo stub.
+* Example app: local model picker (presets or any GGUF), live download/load status, cancel and delete buttons, 5-minute idle unload, the real fallback instead of the echo stub, macOS network entitlement, and an integration test that downloads and runs a real local model.
 * Docs: README, `llms.txt` and the routing diagram describe the local fallback.
 * Apple: availability now probes the model once with a tiny generation, so a missing or unusable model (for example the iOS simulator on a Mac without Apple Intelligence, ModelManager error 1026) is reported as unavailable and routes to the fallback adapter. ModelManager errors map to `UNAVAILABLE`.
 

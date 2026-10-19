@@ -28,29 +28,21 @@ class ExampleApp extends StatelessWidget {
 }
 
 /// Local models offered when the OS has none (any GGUF works, see "Custom").
-const _models = <(String, String)>[
-  (
-    'SmolLM2 360M (270 MB)',
-    'hf://bartowski/SmolLM2-360M-Instruct-GGUF/SmolLM2-360M-Instruct-Q4_K_M.gguf',
-  ),
-  ('Qwen2.5 0.5B (490 MB)', LocalLlmFallbackAdapter.defaultModel),
-  (
-    'Llama 3.2 1B (810 MB)',
-    'hf://bartowski/Llama-3.2-1B-Instruct-GGUF/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
-  ),
-  (
-    'Qwen2.5 1.5B (1.1 GB)',
-    'hf://Qwen/Qwen2.5-1.5B-Instruct-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf',
-  ),
-  (
-    'Gemma 2 2B (1.7 GB)',
-    'hf://bartowski/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q4_K_M.gguf',
-  ),
-  (
-    'Qwen2.5 3B (2.1 GB)',
-    'hf://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf',
-  ),
+final _models = [
+  for (final p in LocalLlmFallbackAdapter.presets)
+    (
+      '${p.label} (${p.sizeMb >= 1000 ? '${(p.sizeMb / 1000).toStringAsFixed(1)} GB' : '${p.sizeMb} MB'})',
+      p.source,
+    ),
 ];
+
+LocalLlmFallbackAdapter _newLocalModel(
+  String source,
+) => LocalLlmFallbackAdapter(
+  model: source,
+  // Free the memory after 5 idle minutes; the next request reloads from disk.
+  idleUnloadAfter: const Duration(minutes: 5),
+);
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -62,7 +54,12 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   // Uses the OS model when there is one, else a local llama.cpp model that is
   // downloaded on demand.
-  final _ai = FlutterDeviceAi.withLocalModel();
+  final _ai = FlutterDeviceAi.withFallback(
+    fallbackAdapter: _newLocalModel(LocalLlmFallbackAdapter.defaultModel),
+  );
+
+  LocalLlmFallbackAdapter get _local =>
+      _ai.fallbackAdapter! as LocalLlmFallbackAdapter;
 
   OnDeviceAiAvailability? _availability;
   OnDeviceAiCapabilities? _caps;
@@ -75,7 +72,7 @@ class _HomeState extends State<Home> {
     source = source.trim();
     if (source.isEmpty || source == _model) return;
     final old = _ai.fallbackAdapter;
-    _ai.fallbackAdapter = LocalLlmFallbackAdapter(model: source);
+    _ai.fallbackAdapter = _newLocalModel(source);
     _model = source;
     _modelEpoch++;
     await old?.dispose();
@@ -142,6 +139,12 @@ class _HomeState extends State<Home> {
               fallbackReady: ready,
               model: _model,
               onModel: _selectModel,
+              local: _local,
+              onCancel: () => _local.cancelPrepare(),
+              onDelete: () async {
+                await _local.deleteModel();
+                await _refresh();
+              },
               busy: _downloadProgress != null,
               onPrepare: _prepare,
             ),
@@ -182,6 +185,9 @@ class _StatusBar extends StatelessWidget {
     required this.fallbackReady,
     required this.model,
     required this.onModel,
+    required this.local,
+    required this.onCancel,
+    required this.onDelete,
     required this.busy,
     required this.onPrepare,
   });
@@ -193,6 +199,9 @@ class _StatusBar extends StatelessWidget {
   final bool fallbackReady;
   final String model;
   final ValueChanged<String> onModel;
+  final LocalLlmFallbackAdapter local;
+  final VoidCallback onCancel;
+  final VoidCallback onDelete;
   final bool busy;
   final VoidCallback onPrepare;
 
@@ -224,6 +233,35 @@ class _StatusBar extends StatelessWidget {
               ),
             if (a != null && !a.isReady)
               _ModelPicker(model: model, onChanged: onModel, enabled: !busy),
+            if (a != null && !a.isReady)
+              StreamBuilder<LocalLlmStatus>(
+                stream: local.status,
+                initialData: local.currentStatus,
+                builder: (context, snap) {
+                  final st = snap.data!;
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'local model: ${st.phase.name}'
+                          '${st.progress == null || st.phase == LocalLlmPhase.ready ? '' : ' ${(st.progress! * 100).round()}%'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (st.phase == LocalLlmPhase.downloading)
+                        TextButton(
+                          onPressed: onCancel,
+                          child: const Text('Cancel'),
+                        ),
+                      if (fallbackReady && !busy)
+                        TextButton(
+                          onPressed: onDelete,
+                          child: const Text('Delete model'),
+                        ),
+                    ],
+                  );
+                },
+              ),
             if (progress != null) LinearProgressIndicator(value: progress),
             if (error != null)
               Text(error!, style: TextStyle(color: scheme.error)),

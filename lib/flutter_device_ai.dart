@@ -301,16 +301,26 @@ class FlutterDeviceAi {
       tools: nativeTools && toolList.isNotEmpty ? toolList : null,
       config: config,
     );
+    final platformBackend = PlatformSessionBackend(
+      sessionId: sessionId,
+      platform: _platform,
+      nativeTools: nativeTools,
+      nativeStructuredOutput: info.supportsStructuredOutput,
+      supportsImages: info.supportsVision,
+      exactTokenCounts: info.supportsExactTokenCounts,
+    );
+    final adapter = fallbackAdapter;
     return OnDeviceAiSession.fromBackend(
       sessionId: sessionId,
-      backend: PlatformSessionBackend(
-        sessionId: sessionId,
-        platform: _platform,
-        nativeTools: nativeTools,
-        nativeStructuredOutput: info.supportsStructuredOutput,
-        supportsImages: info.supportsVision,
-        exactTokenCounts: info.supportsExactTokenCounts,
-      ),
+      // If the OS model fails with "unavailable" mid-use, carry on with the
+      // fallback instead of surfacing the error.
+      backend: adapter == null
+          ? platformBackend
+          : FailoverSessionBackend(
+              primary: platformBackend,
+              adapter: adapter,
+              fallbackInstruction: _withToolPrompt(instruction, toolList),
+            ),
       systemInstruction: instruction,
       tools: toolList,
       config: config,

@@ -192,12 +192,28 @@ final answer = await ai.generateText(prompt: 'Hello!');
     contextSize: 4096,
   );
   ```
-* **Models:** any GGUF chat model llama.cpp supports (Qwen, Gemma, Llama, Phi, SmolLM, Mistral and more) and `.litertlm` bundles. `model` is an `hf://owner/repo/file.gguf` source, an `https://` URL or a local file path.
-* **Tools and schemas** are emulated in Dart on the fallback, so they work, but small models miss tool calls more often than the OS models. Image input is not available on the fallback.
-* **Setup:** the plugin needs iOS 16.4+ and macOS 14+, and Swift Package Manager enabled in your app (`flutter config --enable-swift-package-manager`, or `flutter: config: enable-swift-package-manager: true` in your `pubspec.yaml`). Android adds the `INTERNET` permission for the download. On Android keep `armeabi-v7a` out of your ABIs.
+* **Models:** any GGUF chat model llama.cpp supports (Qwen, Gemma, Llama, Phi, SmolLM, Mistral and more) and `.litertlm` bundles. `model` is an `hf://owner/repo/file.gguf` source, an `https://` URL or a local file path. `LocalLlmFallbackAdapter.presets` lists checked models with sizes and the RAM they need; `LocalLlmFallbackAdapter.recommendedFor(ramGb)` picks one.
+* **Quality:** conversations use the model's own chat template (the adapter receives structured `FallbackMessage`s, not a flattened prompt), and JSON-schema answers are grammar-constrained, so the output always parses. Tool calling is emulated in Dart with a worked example in the prompt; small models still miss tool calls more often than the OS models. Image input is not available on the fallback.
+* **Downloads:** resumable, with retries; pass `sha256:` to verify the file. `allowDownload: () async => onWifi` lets you refuse a download (for example on mobile data). `cancelPrepare()` aborts one. Failures (no network, no disk space) throw `OnDeviceAiUnavailableException`.
+* **State and storage:** `adapter.status` streams `idle / downloading / loading / ready / unloaded` with progress. `isDownloaded()` and `deleteModel()` manage the cached file.
+* **Memory:** `idleUnloadAfter: Duration(minutes: 5)` releases the model from RAM when unused; the next request reloads it from disk without downloading. `unload()` does it on demand.
+* **Failover:** if the OS model reports it is unavailable while a session is running (for example Apple's model assets are missing), the session moves to the fallback and answers the turn there instead of failing.
+* **Setup:** the plugin needs iOS 16.4+ and macOS 14+, and Swift Package Manager enabled in your app (`flutter config --enable-swift-package-manager`, or `flutter: config: enable-swift-package-manager: true` in your `pubspec.yaml`). Android adds the `INTERNET` permission for the download (the plugin declares it). A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. On Android keep `armeabi-v7a` out of your ABIs.
 * **Cost:** the llama.cpp runtime adds native libraries to your app on every platform even if the OS model is used.
 
-Need a different engine? Use `FlutterDeviceAi.withFallback(fallbackAdapter: ...)` with your own `OnDeviceAiFallbackAdapter`, or build one from callbacks with `CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...)`. Adapters are stateless: the package keeps the conversation and sends the rendered transcript on each turn.
+For more control build the adapter yourself and pass it in:
+
+```dart
+final adapter = LocalLlmFallbackAdapter(
+  model: LocalLlmFallbackAdapter.recommendedFor(6).source,
+  idleUnloadAfter: const Duration(minutes: 5),
+  allowDownload: () async => await isOnWifi(),
+);
+adapter.status.listen((s) => print('${s.phase.name} ${s.progress}'));
+final ai = FlutterDeviceAi.withFallback(fallbackAdapter: adapter);
+```
+
+Need a different engine? Use `FlutterDeviceAi.withFallback(fallbackAdapter: ...)` with your own `OnDeviceAiFallbackAdapter`, or build one from callbacks with `CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...)`. Adapters are stateless: the package keeps the conversation and passes the messages on each turn (override `generateChat` to use a model's chat template; the default renders a plain transcript).
 
 ### Readiness, download and guidance
 
@@ -297,7 +313,7 @@ flutter test integration_test -d <device-id>
 | Prepare the model | `FlutterDeviceAi.ensureReady`, `ai.prepare`, `ai.downloadModel`, `ai.openAICorePlayStore` |
 | Tune generation | `GenerationConfig` (`maxTokens`, `temperature`, `topP`, `topK`, `responseFormat`, `schema`, `maxRepairAttempts`) |
 | Let the model act | `OnDeviceAiTool`, `ToolParameter`, `OnDeviceAiToolException` |
-| Run on a local model when the OS has none | `FlutterDeviceAi.withLocalModel`, `LocalLlmFallbackAdapter` |
+| Run on a local model when the OS has none | `FlutterDeviceAi.withLocalModel`, `LocalLlmFallbackAdapter` (`presets`, `recommendedFor`, `status`, `isDownloaded`, `deleteModel`, `unload`, `cancelPrepare`) |
 | Run on your own engine | `OnDeviceAiFallbackAdapter`, `CallbackFallbackAdapter` |
 | Build screens | `OnDeviceUiGenerator`, `GenUiModuleSpec`, `GenUiBlockTypes` |
 | Parse model output yourself | `JsonSchema.validate`, `JsonExtractor.extract` |

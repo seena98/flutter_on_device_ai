@@ -15,9 +15,24 @@ String emulatedToolInstruction(List<OnDeviceAiTool> tools) {
         },
       )
       .toList();
+  final example = jsonEncode({
+    'tool': tools.first.name,
+    'arguments': {
+      for (final p in (tools.first.parameters ?? const <ToolParameter>[]).where(
+        (p) => !p.optional,
+      ))
+        p.name: switch (p.type) {
+          ToolArgumentType.number => 1,
+          ToolArgumentType.integer => 1,
+          ToolArgumentType.boolean => true,
+          _ => 'text',
+        },
+    },
+  });
   return '''
 You can use tools. To use one, reply with ONLY this JSON object and nothing else:
 {"tool": "<tool name>", "arguments": { ... }}
+Example of a tool call (no other words, no Markdown): $example
 You will then receive the tool result and must answer the user with it.
 If no tool is needed, just answer normally in plain language.
 Available tools:
