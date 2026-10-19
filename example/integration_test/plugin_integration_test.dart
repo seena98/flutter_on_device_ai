@@ -114,58 +114,54 @@ void main() {
   // fallback on any device, including simulators with no OS model.
   // Needs network once (downloads about 270 MB). Talks to the adapter directly
   // so a device that has an OS model still exercises the local fallback.
-  testWidgets(
-    'local fallback model downloads, answers and streams',
-    (tester) async {
-      final adapter = LocalLlmFallbackAdapter(
-        model: LocalLlmFallbackAdapter.presets.first.source,
-        contextSize: 2048,
-      );
-      final progress = <double>[];
-      await adapter.prepare(onProgress: progress.add);
-      expect(progress, isNotEmpty);
-      expect(await adapter.isReady(), isTrue);
+  testWidgets('local fallback model downloads, answers and streams', (
+    tester,
+  ) async {
+    final adapter = LocalLlmFallbackAdapter(
+      model: LocalLlmFallbackAdapter.presets.first.source,
+      contextSize: 2048,
+    );
+    final progress = <double>[];
+    await adapter.prepare(onProgress: progress.add);
+    expect(progress, isNotEmpty);
+    expect(await adapter.isReady(), isTrue);
 
-      final reply = await adapter.generateChat(
-        messages: const [FallbackMessage.user('Say hello in one sentence.')],
-        instructions: 'Answer briefly.',
-      );
-      expect(reply.text.trim(), isNotEmpty);
-      final chunks = await adapter
-          .generateChatStream(
-            messages: const [FallbackMessage.user('Count 1 to 3.')],
-          )
-          .toList();
-      expect(chunks.join().trim(), isNotEmpty);
+    final reply = await adapter.generateChat(
+      messages: const [FallbackMessage.user('Say hello in one sentence.')],
+      instructions: 'Answer briefly.',
+    );
+    expect(reply.text.trim(), isNotEmpty);
+    final chunks = await adapter
+        .generateChatStream(
+          messages: const [FallbackMessage.user('Count 1 to 3.')],
+        )
+        .toList();
+    expect(chunks.join().trim(), isNotEmpty);
 
-      // Grammar-constrained JSON: parses and matches the schema's keys.
-      final json = await adapter.generateChat(
-        messages: const [
-          FallbackMessage.user('Extract: "Ana is 31 years old."'),
-        ],
-        config: const GenerationConfig(
-          maxTokens: 60,
-          temperature: 0,
-          responseFormat: ResponseFormat.json,
-          schema: {
-            'type': 'object',
-            'properties': {
-              'name': {'type': 'string'},
-              'age': {'type': 'integer'},
-            },
-            'required': ['name', 'age'],
+    // Grammar-constrained JSON: parses and matches the schema's keys.
+    final json = await adapter.generateChat(
+      messages: const [FallbackMessage.user('Extract: "Ana is 31 years old."')],
+      config: const GenerationConfig(
+        maxTokens: 60,
+        temperature: 0,
+        responseFormat: ResponseFormat.json,
+        schema: {
+          'type': 'object',
+          'properties': {
+            'name': {'type': 'string'},
+            'age': {'type': 'integer'},
           },
-        ),
-      );
-      final decoded = jsonDecode(json.text) as Map<String, dynamic>;
-      expect(decoded['name'], isA<String>());
-      expect(decoded['age'], isA<int>());
+          'required': ['name', 'age'],
+        },
+      ),
+    );
+    final decoded = jsonDecode(json.text) as Map<String, dynamic>;
+    expect(decoded['name'], isA<String>());
+    expect(decoded['age'], isA<int>());
 
-      await adapter.unload();
-      expect(adapter.currentStatus.phase, LocalLlmPhase.unloaded);
-      expect(await adapter.isReady(), isTrue); // reloads from disk on demand
-      await adapter.dispose();
-    },
-    timeout: const Timeout(Duration(minutes: 15)),
-  );
+    await adapter.unload();
+    expect(adapter.currentStatus.phase, LocalLlmPhase.unloaded);
+    expect(await adapter.isReady(), isTrue); // reloads from disk on demand
+    await adapter.dispose();
+  }, timeout: const Timeout(Duration(minutes: 15)));
 }
