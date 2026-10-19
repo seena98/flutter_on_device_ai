@@ -9,8 +9,8 @@ import 'src/models/tool.dart';
 /// model this package can call yet.
 ///
 /// It reports `unavailable`, so `FlutterDeviceAi` routes everything through
-/// the configured fallback adapter (for example a flutter_edge_ai runner). Without a
-/// fallback, calls throw [OnDeviceAiUnavailableException].
+/// the configured fallback adapter (by default a local llama.cpp model, see
+/// `FlutterDeviceAi.withLocalModel`). Without a fallback, calls throw [OnDeviceAiUnavailableException].
 class FlutterDeviceAiDesktopStub extends FlutterDeviceAiPlatform {
   FlutterDeviceAiDesktopStub();
 
@@ -21,7 +21,7 @@ class FlutterDeviceAiDesktopStub extends FlutterDeviceAiPlatform {
 
   static const _message =
       'This platform has no OS-managed language model. Configure a '
-      'fallbackAdapter (for example EdgeAiFallbackAdapter) to run on it.';
+      'fallbackAdapter (for example LocalLlmFallbackAdapter, or FlutterDeviceAi.withLocalModel()) to run on it.';
 
   @override
   Future<OnDeviceAiAvailability> getAvailability() async =>

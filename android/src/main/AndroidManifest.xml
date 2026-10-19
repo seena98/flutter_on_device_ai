@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Needed to download the local fallback model. -->
+  <uses-permission android:name="android.permission.INTERNET" />
   <queries>
     <package android:name="com.google.android.aicore" />
   </queries>

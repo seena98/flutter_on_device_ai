@@ -8,12 +8,12 @@
   <img src="https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Web%20%7C%20Windows%20%7C%20Linux-475569.svg" alt="platforms">
 </p>
 
-Your phone already contains a language model. Apple ships one with iOS and macOS 26, Google ships Gemini Nano through AICore on recent Android phones, and Chrome ships one in the browser. `flutter_device_ai` lets a Flutter app talk to **whichever one is present**, through a single API, and **hands over to a model you choose** (through `flutter_edge_ai`, for example) when the device has none.
+Your phone already contains a language model. Apple ships one with iOS and macOS 26, Google ships Gemini Nano through AICore on recent Android phones, and Chrome ships one in the browser. `flutter_device_ai` lets a Flutter app talk to **whichever one is present**, through a single API, and **hands over to a real open model that runs locally** (llama.cpp, downloaded once) when the device has none.
 
-* Nothing to bundle: **0 MB** added to your app, no API key, no server, works offline.
+* Nothing to bundle: the OS models add **0 MB** to your app. The optional local fallback model is downloaded on first use (about 490 MB by default). No API key, no server, works offline.
 * One API for chat sessions, streaming, cancellation, tool calling, JSON-schema output and generated UI.
 * **A feature the engine lacks is filled in for you.** Tool calling and schema-constrained JSON work on every backend, natively where the OS supports them and through a tested Dart layer everywhere else. `capabilities()` tells you which is which.
-* **Real fallback, not a stub.** Older phone, desktop, unsupported region: the same session code runs on your fallback engine.
+* **Real fallback, not a stub.** Older phone, desktop, simulator, unsupported region: the same session code runs on a local open model (any GGUF, through llama.cpp).
 * **Typed errors** that tell the user what to do (turn Apple Intelligence on, install AICore, tap to download).
 * **Test without a device** using the bundled `FakeOnDeviceAiPlatform`.
 
@@ -29,7 +29,7 @@ if (await ai.isAvailable()) {
 <p align="center">
   <img src="doc/assets/demo.gif" alt="The example app: streaming chat, JSON extraction, tool calling and a generated screen" width="300" />
   <br />
-  <sub><b>Illustrative demo.</b> This is the real example app and the real library code (streaming, schema validation, tool loop, generated UI). The model's replies are pre-written and fed in through <code>FakeOnDeviceAiPlatform</code>, so it shows the behaviour, not a device capture or real model speed. Regenerate with <code>doc/demo.md</code>.</sub>
+  <sub><b>Illustrative demo.</b> This is the real example app and the real library code (streaming, schema validation, tool loop, generated UI). The model's replies are pre-written and fed in through <code>FakeOnDeviceAiPlatform</code>, so it shows the behaviour on a device whose OS model is ready, not a device capture or real model speed. On devices without an OS model the same screens run on the local fallback model, with a model picker in the status bar. Regenerate with <code>doc/demo.md</code>.</sub>
 </p>
 
 ## Contents
@@ -42,7 +42,7 @@ if (await ai.isAvailable()) {
 flutter pub add flutter_device_ai
 ```
 
-Requires Flutter 3.32+ (Dart 3.8+). Platform prerequisites are in [Platform setup](#platform-setup).
+Requires Flutter 3.38+ (Dart 3.10.7+). iOS 16.4+, macOS 14+, Android minSdk 26. Platform prerequisites are in [Platform setup](#platform-setup).
 
 ## How a request finds its engine
 
@@ -173,32 +173,31 @@ final reply = await session.ask('It is chilly, warm the living room to 22.');
 
 ### Fallback: keep working on devices with no OS model
 
-Give the facade an adapter and everything above (sessions, streaming, tools, schemas) runs on it whenever the OS model is not ready.
+`FlutterDeviceAi.withLocalModel()` runs a real open model on the device with llama.cpp (through [`llamadart`](https://pub.dev/packages/llamadart)) whenever the OS model is not ready. Sessions, streaming, tools and schemas all work the same. It runs on Android, iOS, macOS, Windows, Linux and the web, including the iOS simulator and Macs without Apple Intelligence.
 
 ```dart
-final ai = FlutterDeviceAi.withFallback(
-  fallbackAdapter: EdgeAiFallbackAdapter(
-    modelName: 'Edge AI',
-    isModelReady: () async => model != null,
-    onGenerateText: (prompt, {config, instructions}) async {
-      final chat = await model!.createChat();
-      await chat.addQueryChunk(Message.text(
-        text: [if (instructions != null) instructions, prompt].join('\n\n'),
-        isUser: true,
-      ));
-      final out = StringBuffer();
-      await for (final r in chat.generateChatResponseAsync()) {
-        if (r is TextResponse) out.write(r.token);
-      }
-      return out.toString();
-    },
-  ),
-);
+final ai = FlutterDeviceAi.withLocalModel();
+
+// Downloads the model once, only if the OS has none. Cached afterwards, then fully offline.
+await ai.prepare(onProgress: (p) => print('${(p * 100).round()}%'));
+
+final answer = await ai.generateText(prompt: 'Hello!');
 ```
 
-`EdgeAiFallbackAdapter` is deliberately runner-agnostic: it takes your loaded model through callbacks, so *you* decide which model file to download and when, and the package adds no heavy dependency. `model` above is what `FlutterEdgeAi.getActiveModel()` returns in [`flutter_edge_ai`](https://pub.dev/packages/flutter_edge_ai); the snippet follows that package's documented `Message` / `generateChatResponseAsync` API. Adapt the body to whichever runner you use. The adapter is stateless: the package keeps the conversation and sends the rendered transcript on each turn.
+* **Default model:** Qwen2.5 0.5B Instruct, Q4_K_M (about 490 MB). Pick a bigger one for better answers:
 
-Need another engine? Implement `OnDeviceAiFallbackAdapter` (four methods).
+  ```dart
+  FlutterDeviceAi.withLocalModel(
+    model: 'hf://Qwen/Qwen2.5-1.5B-Instruct-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf',
+    contextSize: 4096,
+  );
+  ```
+* **Models:** any GGUF chat model llama.cpp supports (Qwen, Gemma, Llama, Phi, SmolLM, Mistral and more) and `.litertlm` bundles. `model` is an `hf://owner/repo/file.gguf` source, an `https://` URL or a local file path.
+* **Tools and schemas** are emulated in Dart on the fallback, so they work, but small models miss tool calls more often than the OS models. Image input is not available on the fallback.
+* **Setup:** the plugin needs iOS 16.4+ and macOS 14+, and Swift Package Manager enabled in your app (`flutter config --enable-swift-package-manager`, or `flutter: config: enable-swift-package-manager: true` in your `pubspec.yaml`). Android adds the `INTERNET` permission for the download. On Android keep `armeabi-v7a` out of your ABIs.
+* **Cost:** the llama.cpp runtime adds native libraries to your app on every platform even if the OS model is used.
+
+Need a different engine? Use `FlutterDeviceAi.withFallback(fallbackAdapter: ...)` with your own `OnDeviceAiFallbackAdapter`, or build one from callbacks with `CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...)`. Adapters are stateless: the package keeps the conversation and sends the rendered transcript on each turn.
 
 ### Readiness, download and guidance
 
@@ -239,10 +238,10 @@ Block types: `stat`, `progress`, `checklist`, `list`, `steps`, `table`, `callout
 ## Platform setup
 
 **Apple (iOS, macOS)**
-The plugin builds down to iOS 13 / macOS 10.15 and reports `unavailable` on anything older than 26. Inference needs **iOS or macOS 26+**, a device that supports Apple Intelligence, Apple Intelligence switched on in Settings, and **Xcode 26+** to build. Image input and exact token counts need newer SDKs and are not enabled yet.
+The plugin builds for iOS 16.4+ / macOS 14+ (the llama.cpp fallback needs it) and the OS model needs 26. Inference needs **iOS or macOS 26+**, a device that supports Apple Intelligence, Apple Intelligence switched on in Settings, and **Xcode 26+** to build. Image input and exact token counts need newer SDKs and are not enabled yet.
 
 **Android**
-`minSdk 26`. Needs a device with Google AICore and Gemini Nano support (for example recent Pixel and Galaxy flagships). If AICore is missing, `availability().reason` is `systemComponentMissing`; call `openAICorePlayStore()`. If the model is not yet on the device, `ensureReady()` downloads it. The ML Kit GenAI Prompt API dependency (`com.google.mlkit:genai-prompt`) is added by the plugin; do not pin an older version.
+`minSdk 26`. Needs a device with Google AICore and Gemini Nano support (for example recent Pixel and Galaxy flagships). If AICore is missing, `availability().reason` is `systemComponentMissing`; call `openAICorePlayStore()`. If the model is not yet on the device, `ensureReady()` downloads it. Add `<uses-permission android:name="android.permission.INTERNET"/>` to your release manifest if you use the local fallback (the plugin declares it, Flutter's template only adds it for debug). The ML Kit GenAI Prompt API dependency (`com.google.mlkit:genai-prompt`) is added by the plugin; do not pin an older version.
 
 **Web**
 Desktop Chrome or Edge with the built-in Prompt API available (enable `chrome://flags/#prompt-api-for-gemini-nano` where it is not on by default). The first download needs a user gesture and several GB of disk. No build configuration needed.
@@ -298,7 +297,8 @@ flutter test integration_test -d <device-id>
 | Prepare the model | `FlutterDeviceAi.ensureReady`, `ai.prepare`, `ai.downloadModel`, `ai.openAICorePlayStore` |
 | Tune generation | `GenerationConfig` (`maxTokens`, `temperature`, `topP`, `topK`, `responseFormat`, `schema`, `maxRepairAttempts`) |
 | Let the model act | `OnDeviceAiTool`, `ToolParameter`, `OnDeviceAiToolException` |
-| Run on other engines | `OnDeviceAiFallbackAdapter`, `EdgeAiFallbackAdapter` |
+| Run on a local model when the OS has none | `FlutterDeviceAi.withLocalModel`, `LocalLlmFallbackAdapter` |
+| Run on your own engine | `OnDeviceAiFallbackAdapter`, `CallbackFallbackAdapter` |
 | Build screens | `OnDeviceUiGenerator`, `GenUiModuleSpec`, `GenUiBlockTypes` |
 | Parse model output yourself | `JsonSchema.validate`, `JsonExtractor.extract` |
 | Test | `package:flutter_device_ai/testing.dart` |

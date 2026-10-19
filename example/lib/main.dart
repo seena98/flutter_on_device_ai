@@ -27,13 +27,30 @@ class ExampleApp extends StatelessWidget {
   }
 }
 
-/// A canned-answer engine used ONLY to exercise the UI on machines without an
-/// OS model (desktop, simulators). It is not an AI.
-OnDeviceAiFallbackAdapter demoFallback() => EdgeAiFallbackAdapter(
-  modelName: 'demo echo engine',
-  onGenerateText: (prompt, {config, instructions}) async =>
-      '[demo engine - no real model] ${prompt.split('\n').lastWhere((l) => l.trim().isNotEmpty && !l.startsWith('Assistant:'), orElse: () => prompt)}',
-);
+/// Local models offered when the OS has none (any GGUF works, see "Custom").
+const _models = <(String, String)>[
+  (
+    'SmolLM2 360M (270 MB)',
+    'hf://bartowski/SmolLM2-360M-Instruct-GGUF/SmolLM2-360M-Instruct-Q4_K_M.gguf',
+  ),
+  ('Qwen2.5 0.5B (490 MB)', LocalLlmFallbackAdapter.defaultModel),
+  (
+    'Llama 3.2 1B (810 MB)',
+    'hf://bartowski/Llama-3.2-1B-Instruct-GGUF/Llama-3.2-1B-Instruct-Q4_K_M.gguf',
+  ),
+  (
+    'Qwen2.5 1.5B (1.1 GB)',
+    'hf://Qwen/Qwen2.5-1.5B-Instruct-GGUF/qwen2.5-1.5b-instruct-q4_k_m.gguf',
+  ),
+  (
+    'Gemma 2 2B (1.7 GB)',
+    'hf://bartowski/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q4_K_M.gguf',
+  ),
+  (
+    'Qwen2.5 3B (2.1 GB)',
+    'hf://Qwen/Qwen2.5-3B-Instruct-GGUF/qwen2.5-3b-instruct-q4_k_m.gguf',
+  ),
+];
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -43,13 +60,27 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  final _ai = FlutterDeviceAi.withFallback();
+  // Uses the OS model when there is one, else a local llama.cpp model that is
+  // downloaded on demand.
+  final _ai = FlutterDeviceAi.withLocalModel();
 
   OnDeviceAiAvailability? _availability;
   OnDeviceAiCapabilities? _caps;
-  bool _demoFallback = false;
   double? _downloadProgress;
   String? _setupError;
+  String _model = LocalLlmFallbackAdapter.defaultModel;
+  int _modelEpoch = 0;
+
+  Future<void> _selectModel(String source) async {
+    source = source.trim();
+    if (source.isEmpty || source == _model) return;
+    final old = _ai.fallbackAdapter;
+    _ai.fallbackAdapter = LocalLlmFallbackAdapter(model: source);
+    _model = source;
+    _modelEpoch++;
+    await old?.dispose();
+    await _refresh();
+  }
 
   @override
   void initState() {
@@ -58,7 +89,6 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _refresh() async {
-    _ai.fallbackAdapter = _demoFallback ? demoFallback() : null;
     final availability = await _ai.availability();
     final caps = await _ai.capabilities();
     if (!mounted) return;
@@ -109,29 +139,28 @@ class _HomeState extends State<Home> {
               caps: _caps,
               progress: _downloadProgress,
               error: _setupError,
-              demo: _demoFallback,
-              onDemo: (v) {
-                _demoFallback = v;
-                _refresh();
-              },
+              fallbackReady: ready,
+              model: _model,
+              onModel: _selectModel,
+              busy: _downloadProgress != null,
               onPrepare: _prepare,
             ),
             Expanded(
               child: ready
                   ? TabBarView(
                       children: [
-                        ChatTab(ai: _ai),
-                        ExtractTab(ai: _ai),
-                        ToolsTab(ai: _ai),
-                        ScreenTab(ai: _ai),
+                        ChatTab(key: ValueKey(_modelEpoch), ai: _ai),
+                        ExtractTab(key: ValueKey(_modelEpoch), ai: _ai),
+                        ToolsTab(key: ValueKey(_modelEpoch), ai: _ai),
+                        ScreenTab(key: ValueKey(_modelEpoch), ai: _ai),
                       ],
                     )
                   : const Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(
-                          'No model is usable on this device yet. Follow the '
-                          'message above, or switch on the demo engine to try the UI.',
+                          'No model is usable yet. Follow the message above, or '
+                          'download the local model.',
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -150,8 +179,10 @@ class _StatusBar extends StatelessWidget {
     required this.caps,
     required this.progress,
     required this.error,
-    required this.demo,
-    required this.onDemo,
+    required this.fallbackReady,
+    required this.model,
+    required this.onModel,
+    required this.busy,
     required this.onPrepare,
   });
 
@@ -159,8 +190,10 @@ class _StatusBar extends StatelessWidget {
   final OnDeviceAiCapabilities? caps;
   final double? progress;
   final String? error;
-  final bool demo;
-  final ValueChanged<bool> onDemo;
+  final bool fallbackReady;
+  final String model;
+  final ValueChanged<String> onModel;
+  final bool busy;
   final VoidCallback onPrepare;
 
   @override
@@ -189,6 +222,8 @@ class _StatusBar extends StatelessWidget {
                 'images: ${c.imageInput} · exact tokens: ${c.exactTokenCounts}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            if (a != null && !a.isReady)
+              _ModelPicker(model: model, onChanged: onModel, enabled: !busy),
             if (progress != null) LinearProgressIndicator(value: progress),
             if (error != null)
               Text(error!, style: TextStyle(color: scheme.error)),
@@ -196,22 +231,20 @@ class _StatusBar extends StatelessWidget {
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                if (a != null &&
-                    !a.isReady &&
-                    a.status != ModelFeatureStatus.unavailable)
+                if (a != null && !a.isReady && !fallbackReady)
                   FilledButton.tonal(
                     onPressed: onPrepare,
-                    child: const Text('Download model'),
+                    child: Text(
+                      a.status == ModelFeatureStatus.unavailable
+                          ? 'Download local model'
+                          : 'Download model',
+                    ),
                   ),
                 if (a?.reason == AvailabilityReason.systemComponentMissing)
                   FilledButton.tonal(
                     onPressed: () => FlutterDeviceAi().openAICorePlayStore(),
                     child: const Text('Open AICore in Play Store'),
                   ),
-                if (a != null && !a.isReady) ...[
-                  Switch(value: demo, onChanged: onDemo),
-                  const Text('demo engine (UI test only)'),
-                ],
               ],
             ),
           ],
@@ -664,5 +697,74 @@ class BlockView extends StatelessWidget {
       default:
         return card(Text('${block['content']}'));
     }
+  }
+}
+
+/// Chooses the local fallback model: a preset or any GGUF source (`hf://`,
+/// `https://` or a file path).
+class _ModelPicker extends StatefulWidget {
+  const _ModelPicker({
+    required this.model,
+    required this.onChanged,
+    required this.enabled,
+  });
+
+  final String model;
+  final ValueChanged<String> onChanged;
+  final bool enabled;
+
+  @override
+  State<_ModelPicker> createState() => _ModelPickerState();
+}
+
+class _ModelPickerState extends State<_ModelPicker> {
+  static const _custom = 'custom';
+  final _controller = TextEditingController();
+  bool _customSelected = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preset = _models.any((m) => m.$2 == widget.model);
+    final value = _customSelected || !preset ? _custom : widget.model;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          onChanged: widget.enabled
+              ? (v) {
+                  if (v == null) return;
+                  setState(() => _customSelected = v == _custom);
+                  if (v != _custom) widget.onChanged(v);
+                }
+              : null,
+          items: [
+            for (final (label, source) in _models)
+              DropdownMenuItem(value: source, child: Text(label)),
+            const DropdownMenuItem(
+              value: _custom,
+              child: Text('Custom GGUF (URL, hf:// or file path)'),
+            ),
+          ],
+        ),
+        if (value == _custom)
+          TextField(
+            controller: _controller,
+            enabled: widget.enabled,
+            decoration: const InputDecoration(
+              hintText: 'hf://owner/repo/model-Q4_K_M.gguf',
+              isDense: true,
+            ),
+            onSubmitted: widget.onChanged,
+          ),
+      ],
+    );
   }
 }

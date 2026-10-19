@@ -10,7 +10,7 @@ import '../models/generation_config.dart';
 /// Where a session's turns are actually executed.
 ///
 /// Two implementations exist: [PlatformSessionBackend] (the OS / browser) and
-/// [FallbackSessionBackend] (a pluggable adapter such as an Edge AI runner).
+/// [FallbackSessionBackend] (a pluggable adapter such as a local llama.cpp model).
 abstract class SessionBackend {
   /// Whether the engine calls registered tools by itself.
   bool get nativeTools;

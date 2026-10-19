@@ -72,6 +72,17 @@ Here is the screen:
   });
 
   group('generateModule', () {
+    test('table rows are padded or trimmed to the header width', () {
+      final spec = OnDeviceUiGenerator.parseModelOutput(
+        '{"title":"t","blocks":[{"type":"table","columns":["a","b"],'
+        '"rows":[["1"],["1","2","3"],"junk"]}]}',
+      )!;
+      expect(spec.blocks.single['rows'], [
+        ['1', ''],
+        ['1', '2'],
+      ]);
+    });
+
     test('talks to the model and reports failures', () async {
       FlutterDeviceAiPlatform.instance = FakeOnDeviceAiPlatform(
         responder: (p, h) =>

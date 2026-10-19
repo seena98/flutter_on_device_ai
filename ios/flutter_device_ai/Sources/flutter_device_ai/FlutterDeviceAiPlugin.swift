@@ -39,7 +39,10 @@ public class FlutterDeviceAiPlugin: NSObject, FlutterPlugin {
       .setStreamHandler(instance.events)
     FlutterEventChannel(name: "flutter_device_ai/download", binaryMessenger: messenger)
       .setStreamHandler(instance.downloads)
-    instance.downloads.availabilityProvider = { [weak instance] in instance?.availability() ?? [:] }
+    instance.downloads.availabilityProvider = { [weak instance] done in
+      guard let instance else { return done([:]) }
+      instance.availability(done)
+    }
   }
 
   #if canImport(FoundationModels)
@@ -52,24 +55,25 @@ public class FlutterDeviceAiPlugin: NSObject, FlutterPlugin {
   }
   #endif
 
-  private func availability() -> [String: Any] {
+  private func availability(_ done: @escaping ([String: Any]) -> Void) {
     #if canImport(FoundationModels)
     if #available(iOS 26.0, macOS 26.0, *) {
-      return AppleEngine.availability()
+      Task { done(await AppleEngine.probedAvailability()) }
+      return
     }
     #endif
-    return [
+    done([
       "status": "unavailable",
       "reason": "osTooOld",
       "message": "Apple Foundation Models need iOS 26 / macOS 26 or newer (built with a matching SDK).",
-    ]
+    ])
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     let args = call.arguments as? [String: Any] ?? [:]
     switch call.method {
     case "getAvailability":
-      result(availability())
+      availability { result($0) }
 
     case "getPlatformInfo":
       var usable = false
@@ -98,7 +102,7 @@ public class FlutterDeviceAiPlugin: NSObject, FlutterPlugin {
         return
       }
       #endif
-      result(FlutterError(code: "UNAVAILABLE", message: availability()["message"] as? String, details: nil))
+      availability { result(FlutterError(code: "UNAVAILABLE", message: $0["message"] as? String, details: nil)) }
     }
   }
 }
@@ -124,14 +128,17 @@ final class EventRelay: NSObject, FlutterStreamHandler {
 
 /// Reports model readiness while Apple prepares the on-device model.
 final class DownloadRelay: NSObject, FlutterStreamHandler {
-  var availabilityProvider: (() -> [String: Any])?
+  var availabilityProvider: ((@escaping ([String: Any]) -> Void) -> Void)?
   private var polling: Task<Void, Never>?
 
   func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
     polling?.cancel()
     polling = Task { [weak self] in
       while !Task.isCancelled {
-        let state = self?.availabilityProvider?() ?? [:]
+        let state: [String: Any] = await withCheckedContinuation { cont in
+          guard let provider = self?.availabilityProvider else { return cont.resume(returning: [:]) }
+          provider { cont.resume(returning: $0) }
+        }
         let status = state["status"] as? String ?? "unavailable"
         var event: [String: Any] = ["status": status]
         if status == "available" { event["progress"] = 1.0 }
@@ -175,6 +182,53 @@ final class AppleEngine {
   }
 
   // MARK: availability
+
+  private final class ProbeCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ready = false
+    private var failure: (state: [String: Any], at: Date)?
+
+    func cached() -> [String: Any]? {
+      lock.lock(); defer { lock.unlock() }
+      if ready { return AppleEngine.availability() }
+      if let failure, Date().timeIntervalSince(failure.at) < 30 { return failure.state }
+      return nil
+    }
+
+    func store(ready: Bool, failure state: [String: Any]? = nil) {
+      lock.lock(); defer { lock.unlock() }
+      self.ready = ready
+      self.failure = state.map { ($0, Date()) }
+    }
+  }
+
+  private static let probeCache = ProbeCache()
+
+  /// `SystemLanguageModel.availability` can say `.available` while the model
+  /// assets cannot actually run (notably the iOS simulator on a Mac without a
+  /// ready Apple Intelligence model, ModelManager error 1026). Run one tiny
+  /// generation once so the reported state is truthful.
+  static func probedAvailability() async -> [String: Any] {
+    let base = availability()
+    guard base["status"] as? String == "available" else { return base }
+    if let cached = probeCache.cached() { return cached }
+    do {
+      _ = try await LanguageModelSession().respond(
+        to: "Hi", options: GenerationOptions(maximumResponseTokens: 1))
+      probeCache.store(ready: true)
+      return base
+    } catch is CancellationError {
+      return base
+    } catch {
+      let state: [String: Any] = [
+        "status": "unavailable", "reason": "modelAssetsUnavailable",
+        "message": "The Apple Intelligence model cannot run here (\(error.localizedDescription)). "
+          + "On the iOS simulator this means the host Mac has no ready Apple Intelligence model.",
+      ]
+      probeCache.store(ready: false, failure: state)
+      return state
+    }
+  }
 
   static func availability() -> [String: Any] {
     switch SystemLanguageModel.default.availability {
@@ -298,6 +352,9 @@ final class AppleEngine {
     if let gen = error as? LanguageModelSession.GenerationError {
       if case .assetsUnavailable = gen { return ("UNAVAILABLE", "The on-device model is not available: \(gen.localizedDescription)") }
       return ("GENERATION_FAILED", gen.localizedDescription)
+    }
+    if "\(error)".contains("ModelManager") {
+      return ("UNAVAILABLE", "The on-device model is not available: \(error.localizedDescription)")
     }
     return ("GENERATION_FAILED", "\(error)")
   }

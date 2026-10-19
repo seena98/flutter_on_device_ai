@@ -423,7 +423,7 @@ void main() {
   });
 
   group('availability, capabilities and fallback', () {
-    final fallback = EdgeAiFallbackAdapter(
+    final fallback = CallbackFallbackAdapter(
       modelName: 'test-edge',
       onGenerateText: (prompt, {config, instructions}) async =>
           'edge says: ${prompt.split('\n').first}',
@@ -450,10 +450,23 @@ void main() {
       expect(await ai.availabilityReason(), contains('test-edge'));
     });
 
+    test('prepare() loads the fallback when the OS has no model', () async {
+      install(availability: unavailable);
+      var ready = false;
+      final progress = <double>[];
+      ai.fallbackAdapter = CallbackFallbackAdapter(
+        isModelReady: () => ready,
+        onGenerateText: (prompt, {config, instructions}) async => 'ok',
+      );
+      expect(await ai.isAvailable(), isFalse);
+      await ai.prepare(onProgress: progress.add);
+      expect(progress, [1.0]);
+    });
+
     test('fallback sessions keep the conversation', () async {
       install(availability: unavailable);
       final seen = <String>[];
-      ai.fallbackAdapter = EdgeAiFallbackAdapter(
+      ai.fallbackAdapter = CallbackFallbackAdapter(
         onGenerateText: (prompt, {config, instructions}) async {
           seen.add(prompt);
           return 'ok ${seen.length}';
@@ -468,7 +481,7 @@ void main() {
     test('fallback streams, supports tools and structured output', () async {
       install(availability: unavailable);
       var n = 0;
-      ai.fallbackAdapter = EdgeAiFallbackAdapter(
+      ai.fallbackAdapter = CallbackFallbackAdapter(
         onGenerateText: (p, {config, instructions}) async =>
             ++n == 1 ? '{"tool":"t","arguments":{}}' : '{"n": 2}',
       );
@@ -514,7 +527,7 @@ void main() {
 
         ai.fallbackAdapter = fallback;
         caps = await ai.capabilities();
-        expect(caps.backend, OnDeviceAiBackend.fallbackEdgeAi);
+        expect(caps.backend, OnDeviceAiBackend.fallback);
         expect(caps.toolCalling, CapabilitySupport.emulated);
       },
     );
@@ -523,7 +536,7 @@ void main() {
       'a failing fallback readiness check is treated as not ready',
       () async {
         install(availability: unavailable);
-        ai.fallbackAdapter = EdgeAiFallbackAdapter(
+        ai.fallbackAdapter = CallbackFallbackAdapter(
           onGenerateText: (p, {config, instructions}) async => 'x',
           isModelReady: () => throw StateError('model file missing'),
         );

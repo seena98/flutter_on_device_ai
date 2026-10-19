@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "flutter_device_ai",
     platforms: [
-        .iOS("13.0")
+        .iOS("16.4")
     ],
     products: [
         .library(name: "flutter-device-ai", targets: ["flutter_device_ai"])

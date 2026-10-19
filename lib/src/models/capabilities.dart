@@ -12,8 +12,8 @@ enum OnDeviceAiBackend {
   /// Chromium Prompt API (`LanguageModel`).
   chromePromptApi,
 
-  /// A pluggable [OnDeviceAiFallbackAdapter] (e.g. a flutter_edge_ai runner).
-  fallbackEdgeAi,
+  /// A pluggable [OnDeviceAiFallbackAdapter] (by default a local llama.cpp model).
+  fallback,
 
   /// No usable backend on this platform.
   unsupported,

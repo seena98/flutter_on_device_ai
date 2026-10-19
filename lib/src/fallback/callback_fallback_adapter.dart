@@ -5,7 +5,7 @@ import '../models/generation_config.dart';
 import 'fallback_adapter.dart';
 
 /// Runs a prompt through your on-device runner and returns the full answer.
-typedef EdgeAiTextGenerator =
+typedef FallbackTextGenerator =
     Future<String> Function(
       String prompt, {
       GenerationConfig? config,
@@ -13,34 +13,31 @@ typedef EdgeAiTextGenerator =
     });
 
 /// Runs a prompt through your on-device runner, yielding text deltas.
-typedef EdgeAiStreamGenerator =
+typedef FallbackStreamGenerator =
     Stream<String> Function(
       String prompt, {
       GenerationConfig? config,
       String? instructions,
     });
 
-/// Fallback adapter for on-device runners such as `flutter_edge_ai`
-/// (LiteRT-LM and friends), MediaPipe or anything else that can generate text.
-///
-/// This package does not depend on a particular runner: you wire your own
-/// loaded model in through the callbacks, so you control which model file is
-/// downloaded and when. See the README for a complete example.
-class EdgeAiFallbackAdapter implements OnDeviceAiFallbackAdapter {
-  EdgeAiFallbackAdapter({
+/// Fallback adapter built from callbacks, for wiring in any other engine that
+/// can generate text. Most apps want [LocalLlmFallbackAdapter] instead, which
+/// already runs a real local model.
+class CallbackFallbackAdapter extends OnDeviceAiFallbackAdapter {
+  CallbackFallbackAdapter({
     required this.onGenerateText,
     this.onGenerateStream,
     this.isModelReady,
     this.onDispose,
-    this.modelName = 'Edge AI',
+    this.modelName = 'Custom engine',
   });
 
   /// Produces a complete answer.
-  final EdgeAiTextGenerator onGenerateText;
+  final FallbackTextGenerator onGenerateText;
 
   /// Produces a streamed answer. When omitted, [onGenerateText] is used and
   /// the answer arrives as one chunk.
-  final EdgeAiStreamGenerator? onGenerateStream;
+  final FallbackStreamGenerator? onGenerateStream;
 
   /// Reports whether the model is loaded. Defaults to always ready.
   final FutureOr<bool> Function()? isModelReady;

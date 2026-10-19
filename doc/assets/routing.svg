@@ -44,7 +44,7 @@
   <text class="l" x="600" y="212">no</text>
   <rect class="alt" x="520" y="260" width="280" height="110" rx="12"/>
   <text class="t" x="660" y="292" text-anchor="middle">Fallback adapter</text>
-  <text class="s" x="660" y="318" text-anchor="middle">EdgeAiFallbackAdapter or your own</text>
+  <text class="s" x="660" y="318" text-anchor="middle">Local llama.cpp model or your own</text>
   <text class="s" x="660" y="342" text-anchor="middle">same API, same features</text>
 
   <path class="arrow" d="M800 315H860"/>

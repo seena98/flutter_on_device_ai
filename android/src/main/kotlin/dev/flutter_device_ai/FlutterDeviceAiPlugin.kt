@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.common.GenAiException
 import com.google.mlkit.genai.prompt.Content
 import com.google.mlkit.genai.prompt.GenerateContentRequest
 import com.google.mlkit.genai.prompt.Generation
@@ -157,6 +158,17 @@ class FlutterDeviceAiPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun errorCode(e: Throwable): Pair<String, String> = when (e) {
         is CancellationException -> "CANCELLED" to "Generation cancelled."
+        is GenAiException -> when (e.errorCode) {
+            GenAiException.ErrorCode.CANCELLED -> "CANCELLED" to "Generation cancelled."
+            GenAiException.ErrorCode.BUSY -> "SESSION_BUSY" to (e.message ?: "The model is busy.")
+            GenAiException.ErrorCode.NOT_AVAILABLE,
+            GenAiException.ErrorCode.NEEDS_SYSTEM_UPDATE,
+            GenAiException.ErrorCode.AICORE_INCOMPATIBLE,
+            GenAiException.ErrorCode.NOT_ENOUGH_DISK_SPACE ->
+                "UNAVAILABLE" to "Gemini Nano is not available: ${e.message ?: "code ${e.errorCode}"}"
+            GenAiException.ErrorCode.NOT_SUPPORTED -> "UNSUPPORTED" to (e.message ?: "Not supported on this device.")
+            else -> "GENERATION_FAILED" to (e.message ?: "GenAI error ${e.errorCode}")
+        }
         else -> "GENERATION_FAILED" to (e.message ?: e.toString())
     }
 

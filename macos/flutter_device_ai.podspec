@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_device_ai'
-  s.version          = '0.1.1'
+  s.version          = '0.2.0'
   s.summary          = 'On-device generative AI for Flutter using the models the OS already ships.'
   s.description      = <<-DESC
 Apple Foundation Models on macOS, with sessions, streaming, tool calling, structured output
@@ -12,7 +12,7 @@ and a pluggable fallback engine.
   s.source           = { :path => '.' }
   s.source_files     = 'flutter_device_ai/Sources/flutter_device_ai/**/*.swift'
   s.dependency 'FlutterMacOS'
-  s.platform = :osx, '10.15'
+  s.platform = :osx, '14.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version = '5.0'
   s.weak_frameworks = 'FoundationModels'

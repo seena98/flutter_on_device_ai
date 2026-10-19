@@ -1,6 +1,6 @@
 # flutter_device_ai
 
-> Flutter plugin for on-device generative AI. Uses the OS-managed model (Apple Foundation Models on iOS/macOS 26+, Gemini Nano via Google AICore on Android, Chrome's built-in Prompt API on web) with an optional fallback adapter (e.g. flutter_edge_ai). No model is bundled, no network, no API key.
+> Flutter plugin for on-device generative AI. Uses the OS-managed model (Apple Foundation Models on iOS/macOS 26+, Gemini Nano via Google AICore on Android, Chrome's built-in Prompt API on web) with a local llama.cpp fallback model (any GGUF, via llamadart) when the device has no OS model. No model is bundled; the OS models need no network, the fallback downloads one GGUF once. No API key.
 
 Import: `import 'package:flutter_device_ai/flutter_device_ai.dart';`
 Test double: `import 'package:flutter_device_ai/testing.dart';`
@@ -31,7 +31,7 @@ Supported keywords: type, enum, properties, required, additionalProperties:false
 `await ai.capabilities()` -> backend, streaming, toolCalling/structuredOutput (`CapabilitySupport.native|emulated|unsupported`), imageInput, exactTokenCounts, modelDownload. Branch on this, never on the platform name.
 
 ## Fallback
-`FlutterDeviceAi.withFallback(fallbackAdapter: EdgeAiFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))`. Adapters are stateless; the package replays the transcript ("User: ...\nAssistant: ...\nAssistant:") on each turn. Used whenever the OS model is not `available`. Windows and Linux always use it.
+`FlutterDeviceAi.withLocalModel(model: 'hf://owner/repo/file.gguf', contextSize: 4096)` then `await ai.prepare(onProgress: ...)` (downloads once, only when the OS model is unavailable). Default model Qwen2.5 0.5B Instruct Q4_K_M. Any GGUF or `.litertlm` source (`hf://`, `https://`, file path). Needs iOS 16.4+, macOS 14+, Swift Package Manager enabled, INTERNET on Android. Custom engines: `FlutterDeviceAi.withFallback(fallbackAdapter: CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))` or implement `OnDeviceAiFallbackAdapter`. Adapters are stateless; the package replays the transcript ("User: ...\nAssistant: ...\nAssistant:") on each turn. Used whenever the OS model is not `available`. Windows and Linux always use it.
 
 ## Errors (all extend OnDeviceAiException, field `code`)
 Unavailable, Unsupported, UserActivationRequired (web), SessionBusy, Cancelled, StructuredOutput, Schema, Generation.
@@ -43,7 +43,7 @@ Unavailable, Unsupported, UserActivationRequired (web), SessionBusy, Cancelled, 
 - A session runs one turn at a time (`OnDeviceAiSessionBusyException`); open several sessions for parallelism.
 - `isAvailable()` is true if the OS model is ready OR a fallback is ready; use `availability()` for the native state only.
 - Web: `ensureReady()` must run inside a click/tap handler.
-- Android needs minSdk 26 and Google AICore; Apple needs iOS/macOS 26+, Apple Intelligence enabled, Xcode 26+.
+- Android needs minSdk 26 and Google AICore; Apple needs iOS/macOS 26+, Apple Intelligence enabled, Xcode 26+. The plugin itself needs Flutter 3.38+, iOS 16.4+, macOS 14+. On Apple, availability runs one tiny probe generation, so a missing model (simulator on a Mac without Apple Intelligence) reports unavailable and routes to the fallback.
 - Image input: Android only (`session.supportsImages`).
 - `maxTokens` is ignored by Chrome. On-device models are small: keep prompts short and tool lists small.
 - Do not mock the plugin with method-channel stubs; use `FakeOnDeviceAiPlatform`.

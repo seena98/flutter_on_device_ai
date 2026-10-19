@@ -108,7 +108,12 @@ class GenUiBlockTypes {
         ];
         final rows = <List<String>>[];
         for (final r in block['rows'] as List? ?? const []) {
-          if (r is List) rows.add([for (final cell in r) cell.toString()]);
+          if (r is! List) continue;
+          // Small models return ragged rows; pad or trim to the header width.
+          rows.add([
+            for (var i = 0; i < columns.length; i++)
+              i < r.length ? r[i].toString() : '',
+          ]);
         }
         if (columns.isEmpty || rows.isEmpty) return null;
         return {'type': type, 'columns': columns, 'rows': rows};

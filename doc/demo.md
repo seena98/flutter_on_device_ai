@@ -3,7 +3,8 @@
 `doc/assets/demo.gif` is rendered headlessly from the example app. The app and the
 library are the real ones; only the model's replies are scripted (see `_reply` in
 `example/test/demo_frames_test.dart`) and served through `FakeOnDeviceAiPlatform`.
-It is an illustration, and the README says so next to it.
+It is an illustration, and the README says so next to it. It shows the OS-model path; the
+fallback model picker (visible only when the OS model is unavailable) is not part of it.
 
 ```sh
 mkdir -p /tmp/frames

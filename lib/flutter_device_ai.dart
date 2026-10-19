@@ -3,6 +3,7 @@ import 'dart:async';
 import 'flutter_device_ai_platform_interface.dart';
 import 'src/exceptions.dart';
 import 'src/fallback/fallback_adapter.dart';
+import 'src/fallback/local_llm_fallback_adapter.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
 import 'src/models/generation_config.dart';
@@ -15,7 +16,8 @@ import 'src/session/tool_emulation.dart';
 export 'flutter_device_ai_stub.dart' show FlutterDeviceAiDesktopStub;
 export 'src/exceptions.dart';
 export 'src/fallback/fallback_adapter.dart';
-export 'src/fallback/edge_ai_fallback_adapter.dart';
+export 'src/fallback/callback_fallback_adapter.dart';
+export 'src/fallback/local_llm_fallback_adapter.dart';
 export 'src/genui/gen_ui_spec.dart';
 export 'src/genui/on_device_ui_generator.dart';
 export 'src/models/ai_response.dart';
@@ -49,6 +51,17 @@ class FlutterDeviceAi {
 
   /// Creates an independent instance, optionally with a [fallbackAdapter].
   FlutterDeviceAi.withFallback({this.fallbackAdapter});
+
+  /// Creates an independent instance that, when the OS has no usable model,
+  /// runs an open GGUF model locally with llama.cpp ([LocalLlmFallbackAdapter]).
+  /// Call [prepare] once to download it.
+  FlutterDeviceAi.withLocalModel({
+    String model = LocalLlmFallbackAdapter.defaultModel,
+    int contextSize = 4096,
+  }) : fallbackAdapter = LocalLlmFallbackAdapter(
+         model: model,
+         contextSize: contextSize,
+       );
 
   /// Engine used whenever the native model is not ready.
   OnDeviceAiFallbackAdapter? fallbackAdapter;
@@ -93,7 +106,7 @@ class FlutterDeviceAi {
     final native = (await availability()).isReady;
     if (!native && await _fallbackReady()) {
       return const OnDeviceAiCapabilities(
-        backend: OnDeviceAiBackend.fallbackEdgeAi,
+        backend: OnDeviceAiBackend.fallback,
         toolCalling: CapabilitySupport.emulated,
         structuredOutput: CapabilitySupport.emulated,
       );
@@ -152,7 +165,10 @@ class FlutterDeviceAi {
       return;
     }
     if (state.status == ModelFeatureStatus.unavailable) {
-      throw OnDeviceAiUnavailableException(state.message);
+      final adapter = fallbackAdapter;
+      if (adapter == null) throw OnDeviceAiUnavailableException(state.message);
+      await adapter.prepare(onProgress: onProgress);
+      return;
     }
 
     String? failure;

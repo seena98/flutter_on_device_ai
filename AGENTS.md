@@ -15,7 +15,7 @@ lib/flutter_device_ai_stub.dart       Windows/Linux: reports unavailable (dartPl
 lib/testing.dart                         FakeOnDeviceAiPlatform for consumers' tests
 lib/src/session/                         OnDeviceAiSession (tool loop, schema repair), SessionBackend, tool_emulation
 lib/src/schema/json_schema.dart          JsonSchema validator + JsonExtractor (lenient JSON recovery)
-lib/src/fallback/                        adapter contract + EdgeAiFallbackAdapter
+lib/src/fallback/                        adapter contract, LocalLlmFallbackAdapter (llamadart), CallbackFallbackAdapter
 lib/src/genui/                           generated-UI spec + generator
 ios|macos/flutter_device_ai/Sources/flutter_device_ai   identical Swift (SwiftPM + CocoaPods) (FoundationModels); keep the two files in sync
 android/src/main/kotlin/dev/flutter_device_ai   Kotlin (ML Kit GenAI Prompt API)
