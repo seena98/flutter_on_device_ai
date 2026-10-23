@@ -42,9 +42,8 @@ void main() {
     );
     expect(res.text.trim(), isNotEmpty);
 
-    final chunks = await ai
-        .generateTextStream(prompt: 'Count from 1 to 3.')
-        .toList();
+    final stream = ai.generateTextStream(prompt: 'Count from 1 to 3.');
+    final chunks = await stream.toList();
     expect(chunks.join().trim(), isNotEmpty);
   });
 
@@ -130,11 +129,9 @@ void main() {
         instructions: 'Answer briefly.',
       );
       expect(reply.text.trim(), isNotEmpty);
-      final chunks = await adapter
-          .generateChatStream(
-            messages: const [FallbackMessage.user('Count 1 to 3.')],
-          )
-          .toList();
+      const messages = [FallbackMessage.user('Count 1 to 3.')];
+      final stream = adapter.generateChatStream(messages: messages);
+      final chunks = await stream.toList();
       expect(chunks.join().trim(), isNotEmpty);
 
       // Grammar-constrained JSON: parses and matches the schema's keys.
