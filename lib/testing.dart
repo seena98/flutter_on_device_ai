@@ -8,9 +8,11 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'flutter_device_ai_platform_interface.dart';
+import 'src/embeddings/embedder.dart';
 import 'src/exceptions.dart';
 import 'src/models/ai_response.dart';
 import 'src/models/capabilities.dart';
@@ -190,4 +192,37 @@ class FakeSession {
   final List<String> pending = [];
   final List<String> transcript = [];
   bool cancelled = false;
+}
+
+/// Deterministic embedder for tests: hashes words into a fixed-size
+/// bag-of-words vector, so texts sharing words score as similar. It is a test
+/// double, not a language model; never ship it.
+class FakeOnDeviceAiEmbedder extends OnDeviceAiEmbedder {
+  FakeOnDeviceAiEmbedder({this.dimensions = 64});
+
+  final int dimensions;
+
+  /// Every text passed to [embed] / [embedQuery], oldest first.
+  final List<String> embedded = [];
+
+  @override
+  String get name => 'Fake embedder';
+
+  @override
+  Future<bool> isReady() async => true;
+
+  @override
+  Future<List<double>> embed(String text) async {
+    embedded.add(text);
+    final v = List<double>.filled(dimensions, 0);
+    for (final w in text.toLowerCase().split(RegExp(r'[^a-z0-9]+'))) {
+      if (w.isEmpty) continue;
+      v[w.hashCode.abs() % dimensions] += 1;
+    }
+    final norm = math.sqrt(v.fold<double>(0, (a, b) => a + b * b));
+    return norm == 0 ? v : [for (final x in v) x / norm];
+  }
+
+  @override
+  Future<void> dispose() async {}
 }

@@ -77,10 +77,10 @@ packages:
     dependency: transitive
     description:
       name: dinja
-      sha256: "8bb2dfdb481901a0b360fec4a8ffd108d11c5441577f4ebd9309d3b667a1d0a6"
+      sha256: fca95d1c75d6aaca8205b55a498ca5fa710c5c69d7ac3fd7f76758ea5da2ada7
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.0"
+    version: "1.3.1"
   fake_async:
     dependency: transitive
     description:
@@ -116,7 +116,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.2.0"
+    version: "0.3.0"
   flutter_driver:
     dependency: transitive
     description: flutter
@@ -218,18 +218,18 @@ packages:
     dependency: transitive
     description:
       name: llamadart
-      sha256: cc086918e51f6d3579aaf2b34918d554db70c6c67e259bdb801ab22e434ea118
+      sha256: "2c1bd4be3876cc3ee6f83b9ca39757eb040fd6114f3e9c5dd294bd101e0fd8e5"
       url: "https://pub.dev"
     source: hosted
-    version: "0.15.3"
+    version: "0.16.0"
   llamadart_llama_cpp_flutter:
     dependency: transitive
     description:
       name: llamadart_llama_cpp_flutter
-      sha256: cf8a0d9d2af4b23c139e8d70fdca75d68dab48788574ddf3a5dd2b5f5eb42efe
+      sha256: e109ea42e9155d9294d03a2e6f947ac998cf05104c3711d0aa8bff7940828a6c
       url: "https://pub.dev"
     source: hosted
-    version: "0.15.1"
+    version: "0.16.0"
   logging:
     dependency: transitive
     description:

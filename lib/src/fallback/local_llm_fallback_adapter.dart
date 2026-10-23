@@ -42,7 +42,13 @@ class LocalLlmStatus {
 
 /// A model offered to users, with a rough idea of what it needs.
 class LocalLlmPreset {
-  const LocalLlmPreset(this.label, this.source, this.sizeMb, this.minRamGb);
+  const LocalLlmPreset(
+    this.label,
+    this.source,
+    this.sizeMb,
+    this.minRamGb, {
+    this.projector,
+  });
 
   final String label;
 
@@ -54,6 +60,13 @@ class LocalLlmPreset {
 
   /// Device memory below which this model is likely to be killed by the OS.
   final int minRamGb;
+
+  /// Multimodal projector (mmproj) GGUF, same notation as [source]. Non-null
+  /// for vision models; pass it as [LocalLlmFallbackAdapter.projector].
+  final String? projector;
+
+  /// Whether the model accepts images.
+  bool get isVision => projector != null;
 }
 
 /// Fallback that runs a real open model locally with llama.cpp (through
@@ -77,6 +90,7 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
     this.sha256,
     this.idleUnloadAfter,
     this.allowDownload,
+    this.projector,
   });
 
   /// Qwen2.5 0.5B Instruct, Q4_K_M (about 490 MB). Small enough for any phone;
@@ -119,6 +133,19 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
     ),
   ];
 
+  /// Vision models (text and image in), smallest first. Pass both
+  /// `source` and `projector` to the adapter.
+  static const visionPresets = <LocalLlmPreset>[
+    LocalLlmPreset(
+      'SmolVLM 500M',
+      'hf://ggml-org/SmolVLM-500M-Instruct-GGUF/SmolVLM-500M-Instruct-Q8_0.gguf',
+      437,
+      3,
+      projector:
+          'hf://ggml-org/SmolVLM-500M-Instruct-GGUF/mmproj-SmolVLM-500M-Instruct-Q8_0.gguf',
+    ),
+  ];
+
   /// The largest [presets] entry that fits in [ramGb] of device memory, or the
   /// smallest one when nothing does.
   static LocalLlmPreset recommendedFor(int ramGb) => presets.lastWhere(
@@ -138,6 +165,10 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
 
   /// Expected SHA-256 of the file. The download is rejected when it differs.
   final String? sha256;
+
+  /// Multimodal projector (mmproj) GGUF for a vision [model], in the same
+  /// notation. When set, sessions accept images ([supportsImages]).
+  final String? projector;
 
   /// Releases the model from memory after this much inactivity. The next
   /// request reloads it from disk (no download). Null keeps it loaded.
@@ -172,6 +203,9 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
   String get name => modelName;
 
   @override
+  bool get supportsImages => projector != null;
+
+  @override
   Future<bool> isReady() async {
     if (_engine != null) return true;
     return _wasLoaded || await isDownloaded();
@@ -180,13 +214,19 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
   /// Whether the model file is already on this device (no download needed).
   Future<bool> isDownloaded() async {
     try {
-      await DefaultModelDownloadManager().ensureModel(
-        ModelSource.parse(model),
-        options: ModelLoadOptions(
-          cachePolicy: ModelCachePolicy.cacheOnly,
-          sha256: sha256,
-        ),
-      );
+      final manager = DefaultModelDownloadManager();
+      for (final (source, hash) in [
+        (model, sha256),
+        if (projector != null) (projector!, null),
+      ]) {
+        await manager.ensureModel(
+          ModelSource.parse(source),
+          options: ModelLoadOptions(
+            cachePolicy: ModelCachePolicy.cacheOnly,
+            sha256: hash,
+          ),
+        );
+      }
       return true;
     } catch (_) {
       return false;
@@ -219,7 +259,10 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
       }
       _emit(cached ? LocalLlmPhase.loading : LocalLlmPhase.downloading, 0);
       _engine = await LlamaEngine.load(
-        LlamaModel(ModelSource.parse(model)),
+        LlamaModel(
+          ModelSource.parse(model),
+          projector: projector == null ? null : ModelSource.parse(projector!),
+        ),
         params: ModelParams(contextSize: contextSize),
         download: ModelLoadOptions(sha256: sha256, cancelToken: token),
         onProgress: (p) {
@@ -314,8 +357,8 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
     );
   }
 
-  /// A session seeded with every message but the last, plus the last user text.
-  (ChatSession, String) _session(
+  /// A session seeded with every message but the last, plus the last user turn.
+  (ChatSession, FallbackMessage) _session(
     LlamaEngine engine,
     List<FallbackMessage> messages,
     String? instructions,
@@ -327,14 +370,24 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
     );
     for (final m in messages.take(messages.length - 1)) {
       session.addMessage(
-        LlamaChatMessage.fromText(
-          role: m.isUser ? LlamaChatRole.user : LlamaChatRole.assistant,
-          text: m.text,
-        ),
+        m.images.isEmpty
+            ? LlamaChatMessage.fromText(
+                role: m.isUser ? LlamaChatRole.user : LlamaChatRole.assistant,
+                text: m.text,
+              )
+            : LlamaChatMessage.withContent(
+                role: LlamaChatRole.user,
+                content: _parts(m),
+              ),
       );
     }
-    return (session, messages.last.text);
+    return (session, messages.last);
   }
+
+  List<LlamaContentPart> _parts(FallbackMessage m) => [
+    for (final image in m.images) LlamaImageContent(bytes: image.bytes),
+    LlamaTextContent(m.text),
+  ];
 
   Map<String, dynamic>? _format(GenerationConfig? config) {
     final schema = config?.schema;
@@ -354,10 +407,16 @@ class LocalLlmFallbackAdapter extends OnDeviceAiFallbackAdapter {
     String? instructions, {
     bool constrained = true,
   }) {
-    final (session, text) = _session(engine, messages, instructions);
+    final (session, last) = _session(engine, messages, instructions);
+    if (last.images.isNotEmpty && projector == null) {
+      throw const OnDeviceAiUnsupportedException(
+        'This local model has no vision projector. Set '
+        'LocalLlmFallbackAdapter.projector to use images.',
+      );
+    }
     return session
         .create(
-          [LlamaTextContent(text)],
+          _parts(last),
           params: _params(config),
           responseFormat: constrained ? _format(config) : null,
         )

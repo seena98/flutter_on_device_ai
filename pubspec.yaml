@@ -2,7 +2,7 @@ name: flutter_device_ai
 description: >-
   On-device generative AI for Flutter: Apple Foundation Models, Gemini Nano and
   Chrome built-in AI with streaming, tool calling and JSON-schema output.
-version: 0.2.0
+version: 0.3.0
 homepage: https://github.com/seena98/flutter_on_device_ai
 repository: https://github.com/seena98/flutter_on_device_ai
 issue_tracker: https://github.com/seena98/flutter_on_device_ai/issues
@@ -23,8 +23,8 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   plugin_platform_interface: ^2.1.8
-  llamadart: ^0.15.3
-  llamadart_llama_cpp_flutter: ^0.15.1
+  llamadart: ^0.16.0
+  llamadart_llama_cpp_flutter: ^0.16.0
 
 dev_dependencies:
   flutter_test:

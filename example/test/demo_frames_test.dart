@@ -30,7 +30,12 @@ const _module =
     '{"title":"Strength and mobility","completed":true},{"title":"Long run, 8 km","completed":false}]},'
     '{"type":"callout","kind":"info","content":"Rest well the night before race day."}]}';
 
+const _answer =
+    'Hold the small button on the back of the router for 10 seconds, '
+    'until the light blinks white.';
+
 String _reply(String prompt) {
+  if (prompt.startsWith('Answer using only these passages')) return _answer;
   if (prompt.startsWith('Result of tool')) {
     return 'Done. The thermostat is now set to 23 °C.';
   }
@@ -88,7 +93,10 @@ void main() {
 
     final key = GlobalKey();
     await tester.pumpWidget(
-      RepaintBoundary(key: key, child: const ExampleApp()),
+      RepaintBoundary(
+        key: key,
+        child: ExampleApp(embedder: FakeOnDeviceAiEmbedder()),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -171,6 +179,13 @@ void main() {
     await snap(900);
     await run(find.text('Generate screen'), maxFrames: 6, every: 3);
     await snap(2600);
+
+    // Scene 5: search your own notes
+    await tester.tap(find.text('Docs'));
+    await tester.pumpAndSettle();
+    await snap(1200);
+    await run(find.text('Search and answer'), maxFrames: 14, every: 3);
+    await snap(2800);
 
     if (dir != null) {
       File('$dir/manifest.txt').writeAsStringSync(manifest.join('\n'));

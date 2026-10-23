@@ -1,3 +1,12 @@
+## 0.3.0
+
+* **Embeddings and RAG, fully on device.** `OnDeviceAiEmbedder` contract, `LocalEmbedder` (GGUF embedding model through llama.cpp, default BGE small, about 36 MB, with `presets`), `InMemoryVectorStore` (cosine search, JSON save/load), `RagIndex` (`addDocument`, `search`, `contextFor`, `toJson`/`fromJson`) and `chunkText`. `RagIndex.asTool()` lets a session retrieve on its own.
+* **Image input on the local fallback.** `LocalLlmFallbackAdapter(projector: ...)` / `FlutterDeviceAi.withLocalModel(projector: ...)` load a vision GGUF with its mmproj; `session.addImage` works and `capabilities().imageInput` reports it. `LocalLlmFallbackAdapter.visionPresets` lists SmolVLM 500M. `OnDeviceAiFallbackAdapter.supportsImages` and `FallbackMessage.images` added for custom adapters.
+* **Offline speech-to-text.** `LocalSpeechToText` runs Qwen3-ASR locally (`transcribeFile`, `transcribeBytes`, `presets`).
+* `FakeOnDeviceAiEmbedder` in `testing.dart`.
+* Example app: new Docs tab (search your own notes, then answer from the best matches); `ExampleApp(embedder:)` is injectable. The demo GIF now includes it.
+* Example integration test downloads the embedding model and checks semantic search.
+
 ## 0.2.0
 
 * **Built-in local fallback model.** `FlutterDeviceAi.withLocalModel()` / `LocalLlmFallbackAdapter` run a real open GGUF (or `.litertlm`) model with llama.cpp through `llamadart` when the OS has no model. `prepare()` downloads it. `OnDeviceAiFallbackAdapter.prepare()` added.

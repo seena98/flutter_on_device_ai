@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'flutter_device_ai'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = 'On-device generative AI for Flutter using the models the OS already ships.'
   s.description      = <<-DESC
 Apple Foundation Models on macOS, with sessions, streaming, tool calling, structured output

@@ -14,6 +14,10 @@ import 'src/session/session_backend.dart';
 import 'src/session/tool_emulation.dart';
 
 export 'flutter_device_ai_stub.dart' show FlutterDeviceAiDesktopStub;
+export 'src/embeddings/embedder.dart';
+export 'src/embeddings/local_embedder.dart';
+export 'src/embeddings/rag_index.dart';
+export 'src/embeddings/vector_store.dart';
 export 'src/exceptions.dart';
 export 'src/fallback/fallback_adapter.dart';
 export 'src/fallback/callback_fallback_adapter.dart';
@@ -27,6 +31,7 @@ export 'src/models/model_status.dart';
 export 'src/models/tool.dart';
 export 'src/schema/json_schema.dart' show JsonSchema, JsonExtractor;
 export 'src/session/on_device_ai_session.dart';
+export 'src/speech/local_speech_to_text.dart';
 
 /// Entry point for on-device generative AI.
 ///
@@ -54,13 +59,16 @@ class FlutterDeviceAi {
 
   /// Creates an independent instance that, when the OS has no usable model,
   /// runs an open GGUF model locally with llama.cpp ([LocalLlmFallbackAdapter]).
-  /// Call [prepare] once to download it.
+  /// Call [prepare] once to download it. Pass a vision [model] with its
+  /// [projector] (see [LocalLlmFallbackAdapter.visionPresets]) to accept images.
   FlutterDeviceAi.withLocalModel({
     String model = LocalLlmFallbackAdapter.defaultModel,
     int contextSize = 4096,
+    String? projector,
   }) : fallbackAdapter = LocalLlmFallbackAdapter(
          model: model,
          contextSize: contextSize,
+         projector: projector,
        );
 
   /// Engine used whenever the native model is not ready.
@@ -105,10 +113,11 @@ class FlutterDeviceAi {
   Future<OnDeviceAiCapabilities> capabilities() async {
     final native = (await availability()).isReady;
     if (!native && await _fallbackReady()) {
-      return const OnDeviceAiCapabilities(
+      return OnDeviceAiCapabilities(
         backend: OnDeviceAiBackend.fallback,
         toolCalling: CapabilitySupport.emulated,
         structuredOutput: CapabilitySupport.emulated,
+        imageInput: fallbackAdapter!.supportsImages,
       );
     }
     final info = await _platform.getPlatformInfo();

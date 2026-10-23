@@ -27,9 +27,9 @@ if (await ai.isAvailable()) {
 ```
 
 <p align="center">
-  <img src="doc/assets/demo.gif" alt="The example app: streaming chat, JSON extraction, tool calling and a generated screen" width="300" />
+  <img src="doc/assets/demo.gif" alt="The example app: streaming chat, JSON extraction, tool calling, a generated screen and search over your own notes" width="300" />
   <br />
-  <sub><b>Illustrative demo.</b> This is the real example app and the real library code (streaming, schema validation, tool loop, generated UI). The model's replies are pre-written and fed in through <code>FakeOnDeviceAiPlatform</code>, so it shows the behaviour on a device whose OS model is ready, not a device capture or real model speed. On devices without an OS model the same screens run on the local fallback model, with a model picker in the status bar. Regenerate with <code>doc/demo.md</code>.</sub>
+  <sub><b>Illustrative demo.</b> This is the real example app and the real library code (streaming, schema validation, tool loop, generated UI, embeddings and retrieval). The model's replies are pre-written and fed in through <code>FakeOnDeviceAiPlatform</code> (the Docs tab uses <code>FakeOnDeviceAiEmbedder</code>, so its match scores are not real embedding scores), so it shows the behaviour on a device whose OS model is ready, not a device capture or real model speed. On devices without an OS model the same screens run on the local fallback model, with a model picker in the status bar. Regenerate with <code>doc/demo.md</code>.</sub>
 </p>
 
 ## Contents
@@ -193,13 +193,24 @@ final answer = await ai.generateText(prompt: 'Hello!');
   );
   ```
 * **Models:** any GGUF chat model llama.cpp supports (Qwen, Gemma, Llama, Phi, SmolLM, Mistral and more) and `.litertlm` bundles. `model` is an `hf://owner/repo/file.gguf` source, an `https://` URL or a local file path. `LocalLlmFallbackAdapter.presets` lists checked models with sizes and the RAM they need; `LocalLlmFallbackAdapter.recommendedFor(ramGb)` picks one.
-* **Quality:** conversations use the model's own chat template (the adapter receives structured `FallbackMessage`s, not a flattened prompt), and JSON-schema answers are grammar-constrained, so the output always parses. Tool calling is emulated in Dart with a worked example in the prompt; small models still miss tool calls more often than the OS models. Image input is not available on the fallback.
+* **Quality:** conversations use the model's own chat template (the adapter receives structured `FallbackMessage`s, not a flattened prompt), and JSON-schema answers are grammar-constrained, so the output always parses. Tool calling is emulated in Dart with a worked example in the prompt; small models still miss tool calls more often than the OS models. Image input needs a vision model (see below).
 * **Downloads:** resumable, with retries; pass `sha256:` to verify the file. `allowDownload: () async => onWifi` lets you refuse a download (for example on mobile data). `cancelPrepare()` aborts one. Failures (no network, no disk space) throw `OnDeviceAiUnavailableException`.
 * **State and storage:** `adapter.status` streams `idle / downloading / loading / ready / unloaded` with progress. `isDownloaded()` and `deleteModel()` manage the cached file.
 * **Memory:** `idleUnloadAfter: Duration(minutes: 5)` releases the model from RAM when unused; the next request reloads it from disk without downloading. `unload()` does it on demand.
 * **Failover:** if the OS model reports it is unavailable while a session is running (for example Apple's model assets are missing), the session moves to the fallback and answers the turn there instead of failing.
 * **Setup:** the plugin needs iOS 16.4+ and macOS 14+, and Swift Package Manager enabled in your app (`flutter config --enable-swift-package-manager`, or `flutter: config: enable-swift-package-manager: true` in your `pubspec.yaml`). Android adds the `INTERNET` permission for the download (the plugin declares it). A sandboxed macOS app needs the `com.apple.security.network.client` entitlement. On Android keep `armeabi-v7a` out of your ABIs.
 * **Cost:** the llama.cpp runtime adds native libraries to your app on every platform even if the OS model is used.
+
+**Images on the fallback.** Pass a vision GGUF with its projector (mmproj) and `session.addImage` works; `capabilities().imageInput` reports it:
+
+```dart
+final p = LocalLlmFallbackAdapter.visionPresets.first; // SmolVLM 500M
+final ai = FlutterDeviceAi.withLocalModel(model: p.source, projector: p.projector);
+await ai.prepare();
+final s = await ai.createSession();
+await s.addImage(pngBytes, mimeType: 'image/png');
+print((await s.ask('What is in this picture?')).text);
+```
 
 For more control build the adapter yourself and pass it in:
 
@@ -214,6 +225,39 @@ final ai = FlutterDeviceAi.withFallback(fallbackAdapter: adapter);
 ```
 
 Need a different engine? Use `FlutterDeviceAi.withFallback(fallbackAdapter: ...)` with your own `OnDeviceAiFallbackAdapter`, or build one from callbacks with `CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...)`. Adapters are stateless: the package keeps the conversation and passes the messages on each turn (override `generateChat` to use a model's chat template; the default renders a plain transcript).
+
+### Embeddings and retrieval (RAG)
+
+Search your own documents by meaning, offline. `LocalEmbedder` runs a GGUF embedding model with llama.cpp (default BGE small, about 36 MB, downloaded once).
+
+```dart
+final embedder = LocalEmbedder();
+await embedder.prepare(onProgress: print);
+
+final index = RagIndex(embedder: embedder);
+await index.addDocument('manual', manualText); // chunks, embeds, stores
+
+// Option 1: put the best passages in the prompt.
+final context = await index.contextFor('how do I reset it?');
+final answer = await ai.generateText(prompt: 'Using:\n$context\n\nHow do I reset it?');
+
+// Option 2: let the model decide when to look things up.
+final session = await ai.createSession(tools: [index.asTool()]);
+
+// Persist: jsonEncode(index.toJson()) and RagIndex.fromJson(json, embedder: embedder).
+```
+
+Use the same embedding model for indexing and searching; mixing models throws on a dimension mismatch. Bring another engine by implementing `OnDeviceAiEmbedder`.
+
+### Speech to text
+
+`LocalSpeechToText` transcribes audio offline with Qwen3-ASR (about 1 GB download, clips up to roughly 30 seconds, mono 16 kHz works best).
+
+```dart
+final stt = LocalSpeechToText();
+await stt.prepare(onProgress: print);
+print(await stt.transcribeFile(path));
+```
 
 ### Readiness, download and guidance
 
@@ -314,6 +358,8 @@ flutter test integration_test -d <device-id>
 | Tune generation | `GenerationConfig` (`maxTokens`, `temperature`, `topP`, `topK`, `responseFormat`, `schema`, `maxRepairAttempts`) |
 | Let the model act | `OnDeviceAiTool`, `ToolParameter`, `OnDeviceAiToolException` |
 | Run on a local model when the OS has none | `FlutterDeviceAi.withLocalModel`, `LocalLlmFallbackAdapter` (`presets`, `recommendedFor`, `status`, `isDownloaded`, `deleteModel`, `unload`, `cancelPrepare`) |
+| Search documents by meaning | `LocalEmbedder`, `RagIndex` (`asTool`, `contextFor`), `InMemoryVectorStore`, `OnDeviceAiEmbedder` |
+| Transcribe audio offline | `LocalSpeechToText` |
 | Run on your own engine | `OnDeviceAiFallbackAdapter`, `CallbackFallbackAdapter` |
 | Build screens | `OnDeviceUiGenerator`, `GenUiModuleSpec`, `GenUiBlockTypes` |
 | Parse model output yourself | `JsonSchema.validate`, `JsonExtractor.extract` |
@@ -327,7 +373,7 @@ Full API docs are on [pub.dev](https://pub.dev/documentation/flutter_device_ai/l
 * `maxTokens` is honoured on Apple and Android; Chrome's Prompt API has no such limit and ignores it.
 * Android's Prompt API is stateless, so long conversations are re-sent every turn and count against the model's context window.
 * Chrome fixes sampling parameters when a session's model is created, so `temperature`/`topK` apply from the session's first turn.
-* Image input works on Android only for now; Apple's image input needs an SDK that is not yet enabled here.
+* Image input works on Android and on the local fallback with a vision model; on Apple, image input needs an SDK that is not yet enabled here.
 * Windows AI Foundry (Phi Silica) is not implemented yet.
 
 ## For AI coding agents

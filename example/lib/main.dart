@@ -6,7 +6,10 @@ import 'package:flutter_device_ai/flutter_device_ai.dart';
 void main() => runApp(const ExampleApp());
 
 class ExampleApp extends StatelessWidget {
-  const ExampleApp({super.key});
+  /// [embedder] powers the Docs tab; defaults to the local GGUF embedder.
+  const ExampleApp({super.key, this.embedder});
+
+  final OnDeviceAiEmbedder? embedder;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +25,7 @@ class ExampleApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),
-      home: const Home(),
+      home: Home(embedder: embedder),
     );
   }
 }
@@ -45,7 +48,9 @@ LocalLlmFallbackAdapter _newLocalModel(
 );
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  const Home({super.key, this.embedder});
+
+  final OnDeviceAiEmbedder? embedder;
 
   @override
   State<Home> createState() => _HomeState();
@@ -57,6 +62,8 @@ class _HomeState extends State<Home> {
   final _ai = FlutterDeviceAi.withFallback(
     fallbackAdapter: _newLocalModel(LocalLlmFallbackAdapter.defaultModel),
   );
+
+  late final OnDeviceAiEmbedder _embedder = widget.embedder ?? LocalEmbedder();
 
   LocalLlmFallbackAdapter get _local =>
       _ai.fallbackAdapter! as LocalLlmFallbackAdapter;
@@ -83,6 +90,12 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    _embedder.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -116,7 +129,7 @@ class _HomeState extends State<Home> {
     final ready =
         _caps != null && _caps!.backend != OnDeviceAiBackend.unsupported;
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('On-device AI'),
@@ -126,6 +139,7 @@ class _HomeState extends State<Home> {
               Tab(text: 'Extract'),
               Tab(text: 'Tools'),
               Tab(text: 'Screen'),
+              Tab(text: 'Docs'),
             ],
           ),
         ),
@@ -156,6 +170,11 @@ class _HomeState extends State<Home> {
                         ExtractTab(key: ValueKey(_modelEpoch), ai: _ai),
                         ToolsTab(key: ValueKey(_modelEpoch), ai: _ai),
                         ScreenTab(key: ValueKey(_modelEpoch), ai: _ai),
+                        DocsTab(
+                          key: ValueKey(_modelEpoch),
+                          ai: _ai,
+                          embedder: _embedder,
+                        ),
                       ],
                     )
                   : const Center(
@@ -802,6 +821,144 @@ class _ModelPickerState extends State<_ModelPicker> {
             ),
             onSubmitted: widget.onChanged,
           ),
+      ],
+    );
+  }
+}
+
+/// Retrieval-augmented answers over the user's own notes, all on device.
+class DocsTab extends StatefulWidget {
+  const DocsTab({super.key, required this.ai, required this.embedder});
+  final FlutterDeviceAi ai;
+  final OnDeviceAiEmbedder embedder;
+
+  @override
+  State<DocsTab> createState() => _DocsTabState();
+}
+
+class _DocsTabState extends State<DocsTab> {
+  final _notes = TextEditingController(
+    text:
+        'Router reset: hold the small button on the back for 10 seconds '
+        'until the light blinks white.\n\n'
+        'Wi-Fi password: it is printed on the sticker under the router.\n\n'
+        'Warranty: hardware faults are covered for 24 months from purchase.',
+  );
+  final _question = TextEditingController(text: 'How do I reset the router?');
+  late final _index = RagIndex(embedder: widget.embedder);
+  List<RagHit> _hits = const [];
+  String _answer = '';
+  String _indexed = '';
+  double? _progress;
+  bool _busy = false;
+
+  Future<void> _ask() async {
+    setState(() {
+      _busy = true;
+      _answer = '';
+      _hits = const [];
+    });
+    try {
+      if (!await widget.embedder.isReady()) {
+        await widget.embedder.prepare(
+          onProgress: (p) => setState(() => _progress = p),
+        );
+        _progress = null;
+      }
+      // Re-embed only when the notes changed.
+      if (_indexed != _notes.text) {
+        final paragraphs = _notes.text
+            .split(RegExp(r'\n\s*\n'))
+            .where((p) => p.trim().isNotEmpty)
+            .toList();
+        final old = {
+          for (final r in _index.store.records) r.metadata['documentId'],
+        };
+        for (final id in old) {
+          _index.removeDocument(id as String);
+        }
+        for (var i = 0; i < paragraphs.length; i++) {
+          await _index.addDocument('note ${i + 1}', paragraphs[i]);
+        }
+        _indexed = _notes.text;
+      }
+      final hits = await _index.search(_question.text, k: 2, minScore: 0.2);
+      setState(() => _hits = hits);
+      if (hits.isEmpty) {
+        setState(() => _answer = 'No note matches that question.');
+        return;
+      }
+      final context = await _index.contextFor(
+        _question.text,
+        k: 2,
+        minScore: 0.2,
+      );
+      final res = await widget.ai.generateText(
+        prompt:
+            'Answer using only these passages:\n$context\n\n'
+            'Question: ${_question.text}',
+      );
+      setState(() => _answer = res.text);
+    } on OnDeviceAiException catch (e) {
+      setState(() => _answer = '${e.runtimeType}: ${e.message}');
+    } finally {
+      setState(() {
+        _busy = false;
+        _progress = null;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        TextField(
+          controller: _notes,
+          maxLines: 6,
+          decoration: const InputDecoration(
+            labelText: 'Your notes (blank line between notes)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _question,
+          decoration: const InputDecoration(
+            labelText: 'Question',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: _busy ? null : _ask,
+          child: const Text('Search and answer'),
+        ),
+        if (_progress != null) ...[
+          const SizedBox(height: 8),
+          Text('Downloading embedding model', style: text.bodySmall),
+          LinearProgressIndicator(value: _progress),
+        ],
+        if (_hits.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('Best matches', style: text.titleSmall),
+          for (final h in _hits)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(h.text),
+              subtitle: Text(
+                '${h.documentId} · ${(h.score * 100).round()}% match',
+              ),
+            ),
+        ],
+        if (_answer.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text('Answer', style: text.titleSmall),
+          SelectableText(_answer),
+        ],
       ],
     );
   }

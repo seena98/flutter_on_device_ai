@@ -33,6 +33,15 @@ Supported keywords: type, enum, properties, required, additionalProperties:false
 ## Fallback
 `FlutterDeviceAi.withLocalModel(model: 'hf://owner/repo/file.gguf', contextSize: 4096)` then `await ai.prepare(onProgress: ...)` (downloads once, only when the OS model is unavailable). Default model Qwen2.5 0.5B Instruct Q4_K_M. Any GGUF or `.litertlm` source (`hf://`, `https://`, file path). Needs iOS 16.4+, macOS 14+, Swift Package Manager enabled, INTERNET on Android. Tune it with `FlutterDeviceAi.withFallback(fallbackAdapter: LocalLlmFallbackAdapter(model:, contextSize:, sha256:, idleUnloadAfter:, allowDownload:))`; `adapter.status` (idle|downloading|loading|ready|unloaded), `isDownloaded()`, `deleteModel()`, `unload()`, `cancelPrepare()`, `LocalLlmFallbackAdapter.presets` / `recommendedFor(ramGb)`. Uses the model's chat template; JSON schemas are grammar-constrained. If the OS model fails with unavailable mid-session, the session fails over to the fallback. macOS sandbox needs `com.apple.security.network.client`. Custom engines: `FlutterDeviceAi.withFallback(fallbackAdapter: CallbackFallbackAdapter(onGenerateText: ..., onGenerateStream: ..., isModelReady: ...))` or implement `OnDeviceAiFallbackAdapter`. Adapters are stateless; the package passes `List<FallbackMessage>` to `generateChat` on each turn (default renders "User: ...\nAssistant: ...\nAssistant:" into `generateText`). Used whenever the OS model is not `available`. Windows and Linux always use it.
 
+## Fallback vision
+`FlutterDeviceAi.withLocalModel(model: p.source, projector: p.projector)` with `LocalLlmFallbackAdapter.visionPresets` (SmolVLM 500M) enables `session.addImage`; `capabilities().imageInput` reports it. Custom adapters override `supportsImages` and read `FallbackMessage.images`.
+
+## Embeddings / RAG
+`final embedder = LocalEmbedder(); await embedder.prepare();` (BGE small GGUF, ~36 MB). `final index = RagIndex(embedder: embedder); await index.addDocument(id, text); await index.search(q, k:, minScore:); await index.contextFor(q); index.asTool()` (give to `createSession(tools:)`). Persist with `index.toJson()` / `RagIndex.fromJson(json, embedder:)`. `InMemoryVectorStore`, `chunkText`, `OnDeviceAiEmbedder` (implement for other engines). Same embedder for index and query. Tests: `FakeOnDeviceAiEmbedder`.
+
+## Speech to text
+`final stt = LocalSpeechToText(); await stt.prepare(); await stt.transcribeFile(path)` / `transcribeBytes(bytes)`. Qwen3-ASR via llama.cpp, ~1 GB, clips up to ~30 s.
+
 ## Errors (all extend OnDeviceAiException, field `code`)
 Unavailable, Unsupported, UserActivationRequired (web), SessionBusy, Cancelled, StructuredOutput, Schema, Generation.
 

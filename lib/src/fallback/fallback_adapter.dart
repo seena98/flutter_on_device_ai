@@ -1,16 +1,33 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import '../models/ai_response.dart';
 import '../models/generation_config.dart';
 import '../util.dart';
 
+/// An encoded image attached to a user turn.
+class FallbackImage {
+  const FallbackImage(this.bytes, {this.mimeType = 'image/jpeg'});
+
+  /// Encoded image data (JPEG, PNG, ...).
+  final Uint8List bytes;
+  final String mimeType;
+}
+
 /// One turn of the conversation handed to an adapter.
 class FallbackMessage {
-  const FallbackMessage.user(this.text) : isUser = true;
-  const FallbackMessage.assistant(this.text) : isUser = false;
+  const FallbackMessage.user(this.text, {this.images = const []})
+    : isUser = true;
+  const FallbackMessage.assistant(this.text)
+    : isUser = false,
+      images = const [];
 
   /// `true` for the user, `false` for the assistant.
   final bool isUser;
   final String text;
+
+  /// Images sent with this turn. Only user turns carry images.
+  final List<FallbackImage> images;
 }
 
 /// Renders [messages] as a plain "User: ... / Assistant:" transcript ending on
@@ -36,6 +53,9 @@ abstract class OnDeviceAiFallbackAdapter {
 
   /// Whether the engine is loaded and can answer right now.
   Future<bool> isReady();
+
+  /// Whether the engine accepts [FallbackMessage.images]. Defaults to `false`.
+  bool get supportsImages => false;
 
   /// Downloads / loads the engine so [isReady] becomes true. Adapters that are
   /// always ready can leave this as is.

@@ -99,6 +99,7 @@ class FallbackSessionBackend implements SessionBackend {
 
   final List<FallbackMessage> _history = [];
   final List<String> _pending = [];
+  final List<FallbackImage> _pendingImages = [];
   StreamSubscription<String>? _activeStream;
   bool _cancelled = false;
 
@@ -107,7 +108,7 @@ class FallbackSessionBackend implements SessionBackend {
   @override
   bool get nativeStructuredOutput => false;
   @override
-  bool get supportsImages => false;
+  bool get supportsImages => adapter.supportsImages;
   @override
   bool get exactTokenCounts => false;
 
@@ -116,9 +117,14 @@ class FallbackSessionBackend implements SessionBackend {
 
   @override
   Future<void> addImage(Uint8List bytes, String mimeType) async {
-    throw OnDeviceAiUnsupportedException(
-      'The fallback adapter "${adapter.name}" does not accept images.',
-    );
+    if (!adapter.supportsImages) {
+      throw OnDeviceAiUnsupportedException(
+        'The fallback adapter "${adapter.name}" does not accept images. '
+        'Pass a vision model (LocalLlmFallbackAdapter.projector) to enable '
+        'image input.',
+      );
+    }
+    _pendingImages.add(FallbackImage(bytes, mimeType: mimeType));
   }
 
   List<FallbackMessage> _takeMessages() {
@@ -128,8 +134,14 @@ class FallbackSessionBackend implements SessionBackend {
         code: 'EMPTY_TURN',
       );
     }
-    _history.add(FallbackMessage.user(_pending.join('\n')));
+    _history.add(
+      FallbackMessage.user(
+        _pending.join('\n'),
+        images: List.unmodifiable(_pendingImages),
+      ),
+    );
     _pending.clear();
+    _pendingImages.clear();
     return List.of(_history);
   }
 
@@ -207,6 +219,7 @@ class FallbackSessionBackend implements SessionBackend {
     await stop();
     _history.clear();
     _pending.clear();
+    _pendingImages.clear();
   }
 }
 

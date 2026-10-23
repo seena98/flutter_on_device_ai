@@ -2,9 +2,11 @@
 
 `doc/assets/demo.gif` is rendered headlessly from the example app. The app and the
 library are the real ones; only the model's replies are scripted (see `_reply` in
-`example/test/demo_frames_test.dart`) and served through `FakeOnDeviceAiPlatform`.
+`example/test/demo_frames_test.dart`) and served through `FakeOnDeviceAiPlatform`. The Docs (retrieval) scene uses `FakeOnDeviceAiEmbedder`, so its match scores come from a word-hash stand-in, not a real embedding model.
 It is an illustration, and the README says so next to it. It shows the OS-model path; the
 fallback model picker (visible only when the OS model is unavailable) is not part of it.
+Scenes: chat, extract, tools, screen, docs. Offline speech-to-text and fallback image input
+have no screen in the example app, so they are not in the demo.
 
 ```sh
 mkdir -p /tmp/frames
