@@ -37,6 +37,9 @@ example/                                 demo app + integration_test (real devic
 5. Keep `ios/flutter_device_ai/Sources/flutter_device_ai/FlutterDeviceAiPlugin.swift` and the macos copy byte-identical.
 6. FoundationModels code must stay inside `#if canImport(FoundationModels)` and `@available(iOS 26.0, macOS 26.0, *)`.
 
+## Git
+Never `git commit` or `git push` unless the user explicitly asks in that message. Make edits, report them, and wait.
+
 ## Verify before finishing
 ```sh
 dart format --set-exit-if-changed .
